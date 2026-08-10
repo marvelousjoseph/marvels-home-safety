@@ -12,17 +12,17 @@ async function getDevices() {
     return [];
   }
 
-  return data || [];
+  return data ?? [];
 }
 
 export default async function DevicesPage() {
   const devices = await getDevices();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mx-auto max-w-7xl px-6 py-10">
         <p className="text-sm font-medium text-blue-400">
           MARVEL&apos;S HOME SAFETY
         </p>
@@ -87,25 +87,7 @@ export default async function DevicesPage() {
             ))}
           </section>
         )}
-
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">
-                Add a device
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                Connect another security device to your home.
-              </p>
-            </div>
-
-            <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500">
-              Add Device
-            </button>
-          </div>
-        </section>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

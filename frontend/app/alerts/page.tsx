@@ -1,11 +1,40 @@
 import Navbar from "@/components/Navbar";
+import { supabase } from "@/lib/supabase";
 
-export default function AlertsPage() {
+async function getAlerts() {
+  const { data, error } = await supabase
+    .from("alerts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading alerts:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export default async function AlertsPage() {
+  const alerts = await getAlerts();
+
+  const critical = alerts.filter(
+    (alert) => alert.severity?.toLowerCase() === "critical"
+  );
+
+  const warnings = alerts.filter(
+    (alert) => alert.severity?.toLowerCase() === "warning"
+  );
+
+  const resolved = alerts.filter(
+    (alert) => alert.status?.toLowerCase() === "resolved"
+  );
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mx-auto max-w-7xl px-6 py-10">
         <p className="text-sm font-medium text-blue-400">
           MARVEL&apos;S HOME SAFETY
         </p>
@@ -20,40 +49,38 @@ export default function AlertsPage() {
 
         <section className="mt-8 grid gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Critical
-            </p>
+            <p className="text-sm text-slate-400">Critical</p>
 
             <p className="mt-3 text-3xl font-bold">
-              0
+              {critical.length}
             </p>
 
             <p className="mt-2 text-sm text-red-400">
-              No critical alerts
+              {critical.length === 0
+                ? "No critical alerts"
+                : "Critical alerts"}
             </p>
           </div>
 
           <div className="rounded-2xl border border-yellow-900 bg-yellow-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Warnings
-            </p>
+            <p className="text-sm text-slate-400">Warnings</p>
 
             <p className="mt-3 text-3xl font-bold">
-              0
+              {warnings.length}
             </p>
 
             <p className="mt-2 text-sm text-yellow-400">
-              No warnings
+              {warnings.length === 0
+                ? "No warnings"
+                : "Active warnings"}
             </p>
           </div>
 
           <div className="rounded-2xl border border-emerald-900 bg-emerald-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Resolved
-            </p>
+            <p className="text-sm text-slate-400">Resolved</p>
 
             <p className="mt-3 text-3xl font-bold">
-              3
+              {resolved.length}
             </p>
 
             <p className="mt-2 text-sm text-emerald-400">
@@ -67,69 +94,54 @@ export default function AlertsPage() {
             <h2 className="text-xl font-semibold">
               Recent Alerts
             </h2>
-
-            <button className="text-sm text-blue-400 hover:text-blue-300">
-              Clear resolved
-            </button>
           </div>
 
           <div className="mt-6 space-y-4">
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
-                    RESOLVED
-                  </span>
-
-                  <p className="font-medium">
-                    Front door opened
-                  </p>
-                </div>
+            {alerts.length === 0 ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
+                <p className="font-medium">
+                  No alerts found
+                </p>
 
                 <p className="mt-2 text-sm text-slate-400">
-                  The front door sensor detected activity.
+                  There are currently no security alerts in your database.
                 </p>
               </div>
+            ) : (
+              alerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
+                        {alert.status ?? "UNKNOWN"}
+                      </span>
 
-              <span className="text-sm text-slate-500">
-                1 hour ago
-              </span>
-            </div>
+                      <p className="font-medium">
+                        {alert.title ?? alert.type ?? "Security alert"}
+                      </p>
+                    </div>
 
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
-                    RESOLVED
+                    <p className="mt-2 text-sm text-slate-400">
+                      {alert.description ??
+                        alert.message ??
+                        "Security activity detected."}
+                    </p>
+                  </div>
+
+                  <span className="text-sm text-slate-500">
+                    {alert.created_at
+                      ? new Date(alert.created_at).toLocaleString()
+                      : "Unknown time"}
                   </span>
-
-                  <p className="font-medium">
-                    Camera disconnected
-                  </p>
                 </div>
-
-                <p className="mt-2 text-sm text-slate-400">
-                  Living room camera briefly went offline.
-                </p>
-              </div>
-
-              <span className="text-sm text-slate-500">
-                3 hours ago
-              </span>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
-              <p className="font-medium">
-                No active security threats
-              </p>
-
-              <p className="mt-2 text-sm text-slate-400">
-                Your home is currently being monitored normally.
-              </p>
-            </div>
+              ))
+            )}
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
