@@ -17,9 +17,9 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
 
           response = NextResponse.next({
             request: {
@@ -27,15 +27,55 @@ export async function proxy(request: NextRequest) {
             },
           });
 
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
         },
       },
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  const protectedRoutes = [
+    "/dashboard",
+    "/alerts",
+    "/devices",
+    "/security",
+  ];
+
+  const isProtectedRoute = protectedRoutes.some(
+    (route) =>
+      pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  if (isProtectedRoute && !user) {
+    return NextResponse.redirect(
+      new URL("/login", request.url)
+    );
+  }
+
+  if (pathname === "/login" && user) {
+    return NextResponse.redirect(
+      new URL("/dashboard", request.url)
+    );
+  }
+
+  if (pathname === "/" && !user) {
+    return NextResponse.redirect(
+      new URL("/login", request.url)
+    );
+  }
+
+  if (pathname === "/" && user) {
+    return NextResponse.redirect(
+      new URL("/dashboard", request.url)
+    );
+  }
 
   return response;
 }
