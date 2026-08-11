@@ -2,14 +2,12 @@ import Link from "next/link";
 
 export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
 
-        <Link
-          href="/"
-          className="flex items-center gap-3"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold">
+        {/* Brand */}
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20">
             M
           </div>
 
@@ -24,58 +22,60 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="hidden items-center gap-7 text-sm text-slate-300 md:flex">
+        {/* Desktop Navigation */}
+        <div className="hidden items-center gap-7 md:flex">
 
           <Link
             href="/"
-            className="transition hover:text-white"
+            className="text-sm text-slate-300 transition hover:text-white"
           >
             Home
           </Link>
 
           <Link
-            href="/dashboard"
-            className="transition hover:text-white"
+            href="/#features"
+            className="text-sm text-slate-300 transition hover:text-white"
           >
-            Dashboard
+            Features
           </Link>
 
           <Link
-            href="/devices"
-            className="transition hover:text-white"
+            href="/#how-it-works"
+            className="text-sm text-slate-300 transition hover:text-white"
           >
-            Devices
+            How It Works
           </Link>
 
           <Link
-            href="/alerts"
-            className="transition hover:text-white"
+            href="/#contact"
+            className="text-sm text-slate-300 transition hover:text-white"
           >
-            Alerts
-          </Link>
-
-          <Link
-            href="/security"
-            className="transition hover:text-white"
-          >
-            Security
+            Contact
           </Link>
 
           <Link
             href="/login"
-            className="rounded-lg border border-slate-700 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
           >
-            Login
+            Sign In
+          </Link>
+
+          <Link
+            href="/login"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
+          >
+            Get Started
           </Link>
 
         </div>
 
+        {/* Mobile */}
         <div className="flex items-center md:hidden">
           <Link
-            href="/dashboard"
+            href="/login"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
           >
-            Dashboard
+            Get Started
           </Link>
         </div>
 
