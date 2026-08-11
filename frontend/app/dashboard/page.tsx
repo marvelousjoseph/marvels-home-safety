@@ -3,6 +3,43 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
+function formatAlertTime(createdAt: string | null) {
+  if (!createdAt) {
+    return "Unknown time";
+  }
+
+  const created = new Date(createdAt);
+  const now = new Date();
+
+  const difference = now.getTime() - created.getTime();
+  const minutes = Math.floor(difference / 60000);
+
+  if (minutes < 1) {
+    return "Just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  if (days < 7) {
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  return created.toLocaleString("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 async function getDashboardData() {
   const supabase = await createSupabaseServerClient();
 
@@ -73,6 +110,7 @@ export default async function Dashboard() {
   );
 
   const hasCriticalAlert = criticalAlerts.length > 0;
+
   const hasSeriousAlert =
     hasCriticalAlert || highAlerts.length > 0;
 
@@ -317,39 +355,12 @@ export default async function Dashboard() {
                     </p>
                   </div>
 
-                  <span className="text-sm text-slate-500">
-                    {new Date(
-                      alert.created_at
-                    ).toLocaleString()}
+                  <span className="whitespace-nowrap text-sm text-slate-500">
+                    {formatAlertTime(alert.created_at)}
                   </span>
                 </div>
               ))
             )}
-          </div>
-        </section>
-
-        {/* Emergency Contact */}
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">
-            Emergency Contact
-          </h2>
-
-          <div className="mt-6">
-            <p className="text-lg font-medium">
-              Emergency Contact
-            </p>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Primary contact
-            </p>
-
-            <button className="mt-6 w-full rounded-xl bg-red-600 px-4 py-3 font-semibold hover:bg-red-500">
-              Emergency Alert
-            </button>
-
-            <p className="mt-3 text-center text-xs text-slate-500">
-              Use only during a real emergency.
-            </p>
           </div>
         </section>
       </main>

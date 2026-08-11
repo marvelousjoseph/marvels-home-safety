@@ -1,10 +1,35 @@
 import Navbar from "@/components/Navbar";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { simulateFrontDoorOpen } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 async function getDevices() {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data: membership } = await supabase
+    .from("home_members")
+    .select("home_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership?.home_id) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("devices")
     .select("*")
+    .eq("home_id", membership.home_id)
     .order("name", { ascending: true });
 
   if (error) {
@@ -19,10 +44,10 @@ export default async function DevicesPage() {
   const devices = await getDevices();
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <>
       <Navbar />
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-6 py-10">
         <p className="text-sm font-medium text-blue-400">
           MARVEL&apos;S HOME SAFETY
         </p>
@@ -42,14 +67,14 @@ export default async function DevicesPage() {
             </h2>
 
             <p className="mt-2 text-sm text-slate-400">
-              No devices are currently available in your Supabase database.
+              No devices are currently available.
             </p>
           </section>
         ) : (
           <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {devices.map((device) => (
               <div
-                key={device.id ?? device.name}
+                key={device.id}
                 className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -83,11 +108,29 @@ export default async function DevicesPage() {
                     {device.location}
                   </p>
                 </div>
+
+                {device.name === "Front Door Sensor" && (
+                  <form
+                    action={simulateFrontDoorOpen}
+                    className="mt-5"
+                  >
+                    <button
+                      type="submit"
+                      className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                    >
+                      Simulate Door Open
+                    </button>
+
+                    <p className="mt-2 text-center text-xs text-slate-500">
+                      Development testing only
+                    </p>
+                  </form>
+                )}
               </div>
             ))}
           </section>
         )}
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
