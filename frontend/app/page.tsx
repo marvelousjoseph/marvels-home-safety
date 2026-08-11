@@ -31,7 +31,7 @@ export default function HomePage() {
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <a
-                href="/login"
+                href="/signup"
                 className="rounded-xl bg-blue-600 px-7 py-3.5 text-center font-semibold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
               >
                 Get Started
@@ -44,6 +44,10 @@ export default function HomePage() {
                 Contact Us
               </a>
             </div>
+
+            <p className="mt-5 text-sm text-slate-500">
+              Create your account and start managing your home security.
+            </p>
 
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-slate-500">
               <span>✓ Connected devices</span>
@@ -80,9 +84,7 @@ export default function HomePage() {
                       Active Alerts
                     </p>
 
-                    <p className="mt-2 text-3xl font-bold">
-                      0
-                    </p>
+                    <p className="mt-2 text-3xl font-bold">0</p>
 
                     <p className="mt-1 text-xs text-emerald-400">
                       No active threats
@@ -94,9 +96,7 @@ export default function HomePage() {
                       Devices
                     </p>
 
-                    <p className="mt-2 text-3xl font-bold">
-                      4
-                    </p>
+                    <p className="mt-2 text-3xl font-bold">4</p>
 
                     <p className="mt-1 text-xs text-emerald-400">
                       All systems online
@@ -125,6 +125,7 @@ export default function HomePage() {
                     "Front Door Sensor",
                     "Living Room Camera",
                     "Kitchen Smoke Detector",
+                    "Bedroom Window Sensor",
                   ].map((device) => (
                     <div
                       key={device}
@@ -175,7 +176,10 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="mx-auto max-w-7xl px-6 py-24 sm:px-8">
+      <section
+        id="features"
+        className="mx-auto max-w-7xl px-6 py-24 sm:px-8"
+      >
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-400">
             WHY MARVEL&apos;S HOME SAFETY
@@ -352,9 +356,7 @@ export default function HomePage() {
                   className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950 p-4"
                 >
                   <div>
-                    <p className="text-sm text-slate-400">
-                      {label}
-                    </p>
+                    <p className="text-sm text-slate-400">{label}</p>
 
                     <p className="mt-1 text-xs text-slate-500">
                       {description}
@@ -413,11 +415,21 @@ export default function HomePage() {
         </p>
 
         <a
-          href="/login"
+          href="/signup"
           className="mt-8 inline-block rounded-xl bg-blue-600 px-8 py-4 font-semibold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
         >
-          Get Started
+          Create Your Account
         </a>
+
+        <p className="mt-4 text-sm text-slate-500">
+          Already have an account?{" "}
+          <a
+            href="/login"
+            className="text-blue-400 hover:text-blue-300"
+          >
+            Sign in
+          </a>
+        </p>
       </section>
 
       {/* Footer */}
