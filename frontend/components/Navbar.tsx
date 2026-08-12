@@ -4,8 +4,6 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
-
-        {/* Brand */}
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20">
             M
@@ -22,9 +20,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden items-center gap-7 md:flex">
-
           <Link
             href="/"
             className="text-sm text-slate-300 transition hover:text-white"
@@ -61,24 +57,21 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/login"
+            href="/signup"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
           >
             Get Started
           </Link>
-
         </div>
 
-        {/* Mobile */}
         <div className="flex items-center md:hidden">
           <Link
-            href="/login"
+            href="/signup"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
           >
             Get Started
           </Link>
         </div>
-
       </div>
     </nav>
   );
