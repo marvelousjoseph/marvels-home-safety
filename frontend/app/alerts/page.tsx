@@ -1,4 +1,4 @@
-import Navbar from "@/components/Navbar";
+import DashboardNavbar from "@/components/DashboardNavbar";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { resolveAlert } from "./actions";
 
@@ -100,7 +100,7 @@ export default async function AlertsPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <Navbar />
+      <DashboardNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <p className="text-sm font-medium text-blue-400">

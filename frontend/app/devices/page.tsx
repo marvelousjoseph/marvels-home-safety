@@ -1,4 +1,4 @@
-import Navbar from "@/components/Navbar";
+import DashboardNavbar from "@/components/DashboardNavbar";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { simulateFrontDoorOpen } from "./actions";
 
@@ -45,7 +45,7 @@ export default async function DevicesPage() {
 
   return (
     <>
-      <Navbar />
+      <DashboardNavbar />
 
       <main className="mx-auto max-w-7xl px-6 py-10">
         <p className="text-sm font-medium text-blue-400">

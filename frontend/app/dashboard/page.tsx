@@ -1,4 +1,4 @@
-import Navbar from "@/components/Navbar";
+import DashboardNavbar from "@/components/DashboardNavbar";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -140,7 +140,7 @@ export default async function Dashboard() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <Navbar />
+      <DashboardNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         {/* Header */}
