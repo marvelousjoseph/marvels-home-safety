@@ -20,35 +20,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="hidden items-center gap-7 md:flex">
-          <Link
-            href="/"
-            className="text-sm text-slate-300 transition hover:text-white"
-          >
-            Home
-          </Link>
-
-          <Link
-            href="/#features"
-            className="text-sm text-slate-300 transition hover:text-white"
-          >
-            Features
-          </Link>
-
-          <Link
-            href="/#how-it-works"
-            className="text-sm text-slate-300 transition hover:text-white"
-          >
-            How It Works
-          </Link>
-
-          <Link
-            href="/#contact"
-            className="text-sm text-slate-300 transition hover:text-white"
-          >
-            Contact
-          </Link>
-
+        <div className="hidden items-center gap-4 md:flex">
           <Link
             href="/login"
             className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
