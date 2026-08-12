@@ -43,6 +43,13 @@ export default function DashboardNavbar() {
           </Link>
 
           <Link
+            href="/home"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+          >
+            Home
+          </Link>
+
+          <Link
             href="/security"
             className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
           >
