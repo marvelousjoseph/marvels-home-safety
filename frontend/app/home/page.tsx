@@ -68,6 +68,18 @@ async function getHomeData() {
   };
 }
 
+function getDeviceIcon(type: string | null, name: string | null) {
+  const value = `${type ?? ""} ${name ?? ""}`.toLowerCase();
+
+  if (value.includes("camera")) return "📹";
+  if (value.includes("door")) return "🚪";
+  if (value.includes("window")) return "🪟";
+  if (value.includes("smoke")) return "🔥";
+  if (value.includes("sensor")) return "📡";
+
+  return "🛡️";
+}
+
 export default async function HomePage() {
   const { home, members, devices, userRole } = await getHomeData();
 
@@ -75,17 +87,21 @@ export default async function HomePage() {
     (device) => device.status?.toLowerCase() === "online"
   );
 
+  const offlineDevices = devices.filter(
+    (device) => device.status?.toLowerCase() !== "online"
+  );
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <DashboardNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <p className="text-sm font-semibold tracking-wider text-blue-400">
-          MARVEL&apos;S HOME SAFETY
-        </p>
+        <div>
+          <p className="text-sm font-semibold tracking-wider text-blue-400">
+            MARVEL&apos;S HOME SAFETY
+          </p>
 
-        <div className="mt-2">
-          <h1 className="text-4xl font-bold tracking-tight">
+          <h1 className="mt-2 text-4xl font-bold tracking-tight">
             Home Management
           </h1>
 
@@ -96,53 +112,73 @@ export default async function HomePage() {
 
         {!home ? (
           <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-8">
-            <h2 className="text-xl font-semibold">
-              No home found
-            </h2>
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl">
+                🏠
+              </div>
 
-            <p className="mt-2 text-sm text-slate-400">
-              Your account is not currently connected to a home.
-            </p>
+              <div>
+                <h2 className="text-xl font-semibold">
+                  No home found
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-400">
+                  Your account is not currently connected to a home.
+                </p>
+              </div>
+            </div>
           </section>
         ) : (
           <>
-            {/* Home Information */}
-            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">
-                    YOUR HOME
-                  </p>
+            {/* HOME HEADER */}
+            <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/40">
+              <div className="p-8">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-5">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-blue-600/20 text-4xl ring-1 ring-blue-500/20">
+                      🏠
+                    </div>
 
-                  <h2 className="mt-2 text-3xl font-bold">
-                    {home.name}
-                  </h2>
+                    <div>
+                      <p className="text-sm font-medium uppercase tracking-wider text-blue-400">
+                        Your Home
+                      </p>
 
-                  <p className="mt-2 text-sm text-slate-400">
-                    Home security management and connected devices.
-                  </p>
-                </div>
+                      <h2 className="mt-1 text-3xl font-bold">
+                        {home.name}
+                      </h2>
 
-                <div className="rounded-xl border border-blue-900 bg-blue-950/30 px-5 py-4">
-                  <p className="text-xs font-semibold tracking-wider text-blue-400">
-                    YOUR ROLE
-                  </p>
+                      <p className="mt-2 text-sm text-slate-400">
+                        Your connected home security environment.
+                      </p>
+                    </div>
+                  </div>
 
-                  <p className="mt-1 text-lg font-semibold capitalize">
-                    {userRole || "Member"}
-                  </p>
+                  <div className="w-fit rounded-2xl border border-blue-800/60 bg-blue-950/40 px-6 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-400">
+                      Your Role
+                    </p>
+
+                    <p className="mt-1 text-lg font-bold capitalize">
+                      {userRole || "Member"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
 
-            {/* Home Statistics */}
+            {/* STATISTICS */}
             <section className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <p className="text-sm text-slate-400">
-                  Home
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-400">
+                    Home
+                  </p>
 
-                <p className="mt-3 text-xl font-bold">
+                  <span className="text-2xl">🏠</span>
+                </div>
+
+                <p className="mt-4 text-xl font-bold">
                   {home.name}
                 </p>
 
@@ -152,11 +188,15 @@ export default async function HomePage() {
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <p className="text-sm text-slate-400">
-                  Home Members
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-400">
+                    Home Members
+                  </p>
 
-                <p className="mt-3 text-3xl font-bold">
+                  <span className="text-2xl">👥</span>
+                </div>
+
+                <p className="mt-4 text-3xl font-bold">
                   {members.length}
                 </p>
 
@@ -166,11 +206,15 @@ export default async function HomePage() {
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <p className="text-sm text-slate-400">
-                  Devices
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-400">
+                    Devices
+                  </p>
 
-                <p className="mt-3 text-3xl font-bold">
+                  <span className="text-2xl">📡</span>
+                </div>
+
+                <p className="mt-4 text-3xl font-bold">
                   {devices.length}
                 </p>
 
@@ -180,11 +224,15 @@ export default async function HomePage() {
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <p className="text-sm text-slate-400">
-                  Devices Online
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-400">
+                    Devices Online
+                  </p>
 
-                <p className="mt-3 text-3xl font-bold">
+                  <span className="text-2xl">🟢</span>
+                </div>
+
+                <p className="mt-4 text-3xl font-bold">
                   {onlineDevices.length}
                 </p>
 
@@ -203,16 +251,22 @@ export default async function HomePage() {
               </div>
             </section>
 
-            {/* Members */}
+            {/* MEMBERS */}
             <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  Home Members
-                </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    Home Members
+                  </h2>
 
-                <p className="mt-1 text-sm text-slate-400">
-                  People connected to this home.
-                </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    People connected to this home.
+                  </p>
+                </div>
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                  👥
+                </div>
               </div>
 
               <div className="mt-6 space-y-3">
@@ -230,16 +284,22 @@ export default async function HomePage() {
                   members.map((member) => (
                     <div
                       key={member.id}
-                      className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div>
-                        <p className="font-medium">
-                          Home Member
-                        </p>
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800 text-lg">
+                          👤
+                        </div>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          User ID: {member.user_id}
-                        </p>
+                        <div>
+                          <p className="font-medium">
+                            Home Member
+                          </p>
+
+                          <p className="mt-1 max-w-[280px] truncate text-xs text-slate-500">
+                            User ID: {member.user_id}
+                          </p>
+                        </div>
                       </div>
 
                       <span className="w-fit rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold capitalize text-blue-400">
@@ -251,9 +311,9 @@ export default async function HomePage() {
               </div>
             </section>
 
-            {/* Devices */}
+            {/* DEVICES */}
             <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">
                     Connected Devices
@@ -266,9 +326,9 @@ export default async function HomePage() {
 
                 <a
                   href="/devices"
-                  className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
+                  className="w-fit rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-blue-400 transition hover:bg-slate-800 hover:text-blue-300"
                 >
-                  Manage devices
+                  Manage devices →
                 </a>
               </div>
 
@@ -291,51 +351,115 @@ export default async function HomePage() {
                     return (
                       <div
                         key={device.id}
-                        className="rounded-xl border border-slate-800 bg-slate-950 p-5"
+                        className="rounded-2xl border border-slate-800 bg-slate-950 p-5 transition hover:border-slate-700"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold">
-                              {device.name}
-                            </p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-2xl">
+                              {getDeviceIcon(
+                                device.type,
+                                device.name
+                              )}
+                            </div>
 
-                            <p className="mt-1 text-sm text-slate-400">
-                              {device.type || "Security device"}
-                            </p>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">
+                                {device.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-400">
+                                {device.type || "Security device"}
+                              </p>
+                            </div>
                           </div>
 
                           <span
-                            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                            className={`h-3 w-3 shrink-0 rounded-full ${
                               isOnline
-                                ? "bg-emerald-400"
+                                ? "bg-emerald-400 shadow-lg shadow-emerald-400/30"
                                 : "bg-slate-600"
                             }`}
                           />
                         </div>
 
                         <div className="mt-5 border-t border-slate-800 pt-4">
-                          <p className="text-xs text-slate-500">
-                            LOCATION
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-slate-500">
+                              STATUS
+                            </p>
 
-                          <p className="mt-1 text-sm text-slate-300">
-                            {device.location || "Unknown"}
-                          </p>
+                            <p
+                              className={`text-sm font-semibold ${
+                                isOnline
+                                  ? "text-emerald-400"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {device.status || "Unknown"}
+                            </p>
+                          </div>
 
-                          <p
-                            className={`mt-3 text-sm font-medium ${
-                              isOnline
-                                ? "text-emerald-400"
-                                : "text-slate-400"
-                            }`}
-                          >
-                            {device.status || "Unknown"}
-                          </p>
+                          <div className="mt-4">
+                            <p className="text-xs font-semibold text-slate-500">
+                              LOCATION
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-300">
+                              {device.location || "Unknown"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );
                   })
                 )}
+              </div>
+            </section>
+
+            {/* DEVICE HEALTH */}
+            <section className="mt-8 grid gap-5 md:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-xl">
+                    ✓
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400">
+                      Online Devices
+                    </p>
+
+                    <p className="mt-1 text-2xl font-bold text-emerald-400">
+                      {onlineDevices.length}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm text-slate-400">
+                  Devices currently connected and reporting their status.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 text-xl">
+                    ⚠️
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400">
+                      Offline Devices
+                    </p>
+
+                    <p className="mt-1 text-2xl font-bold">
+                      {offlineDevices.length}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-sm text-slate-400">
+                  Devices that are currently not reporting an online status.
+                </p>
               </div>
             </section>
           </>
