@@ -42,6 +42,8 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Private application routes.
+  // These routes require the user to be signed in.
   const protectedRoutes = [
     "/dashboard",
     "/alerts",
@@ -60,17 +62,10 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (pathname === "/" && !user) {
-    return NextResponse.redirect(
-      new URL("/login", request.url)
-    );
-  }
-
-  if (pathname === "/" && user) {
-    return NextResponse.redirect(
-      new URL("/dashboard", request.url)
-    );
-  }
+  // The public homepage is intentionally NOT protected.
+  // Everyone should be able to visit "/".
+  //
+  // Do not redirect "/" to login or dashboard here.
 
   return response;
 }
