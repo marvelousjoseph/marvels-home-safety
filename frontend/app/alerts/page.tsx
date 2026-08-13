@@ -1,4 +1,5 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
+import RealtimeAlerts from "@/components/RealtimeAlerts";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { resolveAlert } from "./actions";
 
@@ -100,6 +101,7 @@ export default async function AlertsPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <RealtimeAlerts />
       <DashboardNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
@@ -115,12 +117,14 @@ export default async function AlertsPage() {
           Review security events and potential threats around your home.
         </p>
 
-        {/* Summary */}
+        <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          Live security updates enabled
+        </div>
+
         <section className="mt-8 grid gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Critical
-            </p>
+            <p className="text-sm text-slate-400">Critical</p>
 
             <p className="mt-3 text-3xl font-bold">
               {critical.length}
@@ -134,9 +138,7 @@ export default async function AlertsPage() {
           </div>
 
           <div className="rounded-2xl border border-yellow-900 bg-yellow-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Warnings
-            </p>
+            <p className="text-sm text-slate-400">Warnings</p>
 
             <p className="mt-3 text-3xl font-bold">
               {warnings.length}
@@ -150,9 +152,7 @@ export default async function AlertsPage() {
           </div>
 
           <div className="rounded-2xl border border-emerald-900 bg-emerald-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Resolved
-            </p>
+            <p className="text-sm text-slate-400">Resolved</p>
 
             <p className="mt-3 text-3xl font-bold">
               {resolved.length}
@@ -164,7 +164,6 @@ export default async function AlertsPage() {
           </div>
         </section>
 
-        {/* Alerts */}
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -192,17 +191,15 @@ export default async function AlertsPage() {
               </div>
             ) : (
               alerts.map((alert) => {
-                const severity =
-                  alert.severity?.toLowerCase();
+                const severity = alert.severity?.toLowerCase();
 
-                const severityStyle =
-                  alert.resolved
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : severity === "critical"
-                      ? "bg-red-500/20 text-red-400"
-                      : severity === "high"
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "bg-yellow-500/20 text-yellow-400";
+                const severityStyle = alert.resolved
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : severity === "critical"
+                    ? "bg-red-500/20 text-red-400"
+                    : severity === "high"
+                      ? "bg-orange-500/20 text-orange-400"
+                      : "bg-yellow-500/20 text-yellow-400";
 
                 return (
                   <div
