@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-function formatAlertTime(createdAt: string | null) {
+function formatEventTime(createdAt: string | null) {
   if (!createdAt) return "Unknown time";
 
   const created = new Date(createdAt);
@@ -44,6 +44,17 @@ function formatAlertTime(createdAt: string | null) {
   });
 }
 
+function getEventIcon(eventType: string | null) {
+  const type = eventType?.toLowerCase() ?? "";
+
+  if (type.includes("door")) return "🚪";
+  if (type.includes("window")) return "🪟";
+  if (type.includes("smoke")) return "🔥";
+  if (type.includes("camera")) return "📹";
+
+  return "📡";
+}
+
 async function getDashboardData() {
   const supabase = await createSupabaseServerClient();
 
@@ -55,6 +66,7 @@ async function getDashboardData() {
     return {
       alerts: [],
       devices: [],
+      events: [],
     };
   }
 
@@ -69,33 +81,55 @@ async function getDashboardData() {
     return {
       alerts: [],
       devices: [],
+      events: [],
     };
   }
 
   const homeId = membership.home_id;
 
-  const [{ data: alerts }, { data: devices }] = await Promise.all([
-    supabase
-      .from("alerts")
-      .select("*")
-      .eq("home_id", homeId)
-      .order("created_at", { ascending: false }),
+  const [{ data: alerts }, { data: devices }, { data: events }] =
+    await Promise.all([
+      supabase
+        .from("alerts")
+        .select("*")
+        .eq("home_id", homeId)
+        .order("created_at", { ascending: false }),
 
-    supabase
-      .from("devices")
-      .select("*")
-      .eq("home_id", homeId)
-      .order("name", { ascending: true }),
-  ]);
+      supabase
+        .from("devices")
+        .select("*")
+        .eq("home_id", homeId)
+        .order("name", { ascending: true }),
+
+      supabase
+        .from("device_events")
+        .select(`
+          id,
+          home_id,
+          device_id,
+          event_type,
+          description,
+          created_at,
+          devices (
+            name,
+            type,
+            location
+          )
+        `)
+        .eq("home_id", homeId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
 
   return {
     alerts: alerts ?? [],
     devices: devices ?? [],
+    events: events ?? [],
   };
 }
 
 export default async function Dashboard() {
-  const { alerts, devices } = await getDashboardData();
+  const { alerts, devices, events } = await getDashboardData();
 
   const activeAlerts = alerts.filter(
     (alert) => alert.resolved === false
@@ -347,7 +381,7 @@ export default async function Dashboard() {
         {/* Main Content */}
         <section className="mt-8 grid gap-6 lg:grid-cols-3">
 
-          {/* Recent Activity */}
+          {/* Recent Security Activity */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 lg:col-span-2">
 
             <div className="flex items-center justify-between">
@@ -358,12 +392,12 @@ export default async function Dashboard() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-400">
-                  Latest events reported by your security system.
+                  Latest events reported by your security devices.
                 </p>
               </div>
 
               <a
-                href="/alerts"
+                href="/activity"
                 className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
               >
                 View all
@@ -373,7 +407,7 @@ export default async function Dashboard() {
 
             <div className="mt-6 space-y-3">
 
-              {alerts.length === 0 ? (
+              {events.length === 0 ? (
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
 
@@ -382,61 +416,67 @@ export default async function Dashboard() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-400">
-                    Your home has not reported any alerts.
+                    Your security devices have not reported any events.
                   </p>
 
                 </div>
 
               ) : (
 
-                alerts.slice(0, 5).map((alert) => (
+                events.map((event) => {
+                  const device = Array.isArray(event.devices)
+                    ? event.devices[0]
+                    : event.devices;
 
-                  <div
-                    key={alert.id}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
+                  return (
+                    <div
+                      key={event.id}
+                      className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
 
-                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-start gap-4">
 
-                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-xl">
+                          {getEventIcon(event.event_type)}
+                        </div>
 
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider ${
-                            alert.resolved
-                              ? "bg-emerald-500/20 text-emerald-400"
-                              : alert.severity?.toLowerCase() ===
-                                  "critical"
-                                ? "bg-red-500/20 text-red-400"
-                                : alert.severity?.toLowerCase() ===
-                                    "high"
-                                  ? "bg-orange-500/20 text-orange-400"
-                                  : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {alert.resolved
-                            ? "RESOLVED"
-                            : alert.severity?.toUpperCase()}
-                        </span>
+                        <div className="min-w-0">
 
-                        <p className="truncate font-medium">
-                          {alert.title}
-                        </p>
+                          <div className="flex flex-wrap items-center gap-3">
+
+                            <p className="truncate font-medium">
+                              {device?.name || "Security Device"}
+                            </p>
+
+                            <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-blue-400">
+                              {event.event_type
+                                ?.replaceAll("_", " ")
+                                .toUpperCase()}
+                            </span>
+
+                          </div>
+
+                          <p className="mt-1 text-sm text-slate-400">
+                            {event.description}
+                          </p>
+
+                          {device?.location && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {device.location}
+                            </p>
+                          )}
+
+                        </div>
 
                       </div>
 
-                      <p className="mt-2 text-sm text-slate-400">
-                        {alert.description}
-                      </p>
+                      <span className="shrink-0 text-sm text-slate-500">
+                        {formatEventTime(event.created_at)}
+                      </span>
 
                     </div>
-
-                    <span className="shrink-0 text-sm text-slate-500">
-                      {formatAlertTime(alert.created_at)}
-                    </span>
-
-                  </div>
-
-                ))
+                  );
+                })
 
               )}
 
