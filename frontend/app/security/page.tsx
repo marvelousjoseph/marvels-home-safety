@@ -1,4 +1,5 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
+import SecurityRealtime from "@/components/SecurityRealtime";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { armSystem, disarmSystem } from "./actions";
 
@@ -81,6 +82,8 @@ export default async function SecurityPage() {
 
   return (
     <>
+      <SecurityRealtime />
+
       <DashboardNavbar />
 
       <main className="mx-auto max-w-7xl px-6 py-10">
@@ -299,6 +302,7 @@ export default async function SecurityPage() {
               <p className="text-sm text-slate-400">
                 Connected Devices
               </p>
+
               <p className="mt-1 text-2xl font-bold">
                 {devices.length}
               </p>
@@ -308,6 +312,7 @@ export default async function SecurityPage() {
               <p className="text-sm text-slate-400">
                 Devices Online
               </p>
+
               <p className="mt-1 text-2xl font-bold">
                 {onlineDevices.length}
               </p>
@@ -317,6 +322,7 @@ export default async function SecurityPage() {
               <p className="text-sm text-slate-400">
                 Critical Events
               </p>
+
               <p className="mt-1 text-2xl font-bold">
                 {criticalAlerts.length}
               </p>
