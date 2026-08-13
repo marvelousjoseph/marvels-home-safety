@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { classifySecurityEvent } from "@/lib/classify-security-event";
+import { createSecurityNotifications } from "@/lib/create-security-notification";
 
 type DeviceEventInput = {
   deviceId: string;
@@ -42,9 +43,6 @@ export async function processDeviceEvent(
 
   let homeId: string | null = null;
 
-  /*
-   * Browser/user path
-   */
   if (options.authenticatedUser) {
     const {
       data: { user },
@@ -69,9 +67,6 @@ export async function processDeviceEvent(
     homeId = membership.home_id;
   }
 
-  /*
-   * Find the device.
-   */
   const { data: device, error: deviceError } = await supabase
     .from("devices")
     .select("id, name, type, status, home_id")
@@ -82,10 +77,6 @@ export async function processDeviceEvent(
     throw new Error("Device not found.");
   }
 
-  /*
-   * Browser users may only interact with
-   * devices belonging to their home.
-   */
   if (homeId && device.home_id !== homeId) {
     throw new Error("Device does not belong to your home.");
   }
@@ -96,9 +87,6 @@ export async function processDeviceEvent(
     throw new Error("Device is not associated with a home.");
   }
 
-  /*
-   * Check security status.
-   */
   const { data: securityStatus, error: securityError } =
     await supabase
       .from("security_status")
@@ -112,9 +100,6 @@ export async function processDeviceEvent(
 
   const armed = securityStatus?.armed === true;
 
-  /*
-   * Intelligent event classification.
-   */
   const classification = classifySecurityEvent({
     deviceName: device.name,
     deviceType: device.type,
@@ -122,9 +107,6 @@ export async function processDeviceEvent(
     securityArmed: armed,
   });
 
-  /*
-   * Store the physical device event.
-   */
   const { data: event, error: eventError } = await supabase
     .from("device_events")
     .insert({
@@ -142,32 +124,40 @@ export async function processDeviceEvent(
     throw new Error("Could not create device event.");
   }
 
-  /*
-   * Create security alert when the classifier
-   * determines that the event requires one.
-   */
+  let alert = null;
+  let notifications = [];
+
   if (classification.shouldAlert) {
-    const { error: alertError } = await supabase
-      .from("alerts")
-      .insert({
-        home_id: homeId,
-        title: classification.title,
-        description:
-          description || classification.description,
-        severity: classification.severity,
-        resolved: false,
-      });
+    const { data: createdAlert, error: alertError } =
+      await supabase
+        .from("alerts")
+        .insert({
+          home_id: homeId,
+          title: classification.title,
+          description:
+            description || classification.description,
+          severity: classification.severity,
+          resolved: false,
+        })
+        .select()
+        .single();
 
     if (alertError) {
       console.error("Alert creation error:", alertError);
       throw new Error("Could not create security alert.");
     }
+
+    alert = createdAlert;
+
+    notifications = await createSecurityNotifications({
+      homeId,
+      alertId: createdAlert.id,
+      title: classification.title,
+      message:
+        description || classification.description,
+    });
   }
 
-  /*
-   * Device successfully reported an event,
-   * therefore mark it online.
-   */
   const { error: deviceStatusError } = await supabase
     .from("devices")
     .update({ status: "Online" })
@@ -183,5 +173,7 @@ export async function processDeviceEvent(
     event,
     device,
     classification,
+    alert,
+    notifications,
   };
 }
