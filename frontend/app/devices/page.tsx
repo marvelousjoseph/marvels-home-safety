@@ -1,4 +1,5 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
+import DevicesRealtime from "@/components/DevicesRealtime";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { simulateFrontDoorOpen } from "./actions";
 
@@ -45,6 +46,7 @@ export default async function DevicesPage() {
 
   return (
     <>
+      <DevicesRealtime />
       <DashboardNavbar />
 
       <main className="mx-auto max-w-7xl px-6 py-10">
