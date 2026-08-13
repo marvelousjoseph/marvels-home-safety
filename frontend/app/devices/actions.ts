@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { processDeviceEvent } from "@/lib/process-device-event";
 
 export async function simulateFrontDoorOpen() {
   const supabase = await createSupabaseServerClient();
@@ -14,108 +15,42 @@ export async function simulateFrontDoorOpen() {
     throw new Error("You must be logged in.");
   }
 
-  const { data: membership, error: membershipError } = await supabase
+  const { data: membership } = await supabase
     .from("home_members")
     .select("home_id")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
-  if (membershipError || !membership?.home_id) {
+  if (!membership?.home_id) {
     throw new Error("Could not find your home.");
   }
 
-  const homeId = membership.home_id;
-
-  const { data: device, error: deviceError } = await supabase
+  const { data: device } = await supabase
     .from("devices")
-    .select("id, name, status")
-    .eq("home_id", homeId)
+    .select("id")
+    .eq("home_id", membership.home_id)
     .eq("name", "Front Door Sensor")
     .limit(1)
     .maybeSingle();
 
-  if (deviceError || !device) {
+  if (!device) {
     throw new Error("Front Door Sensor was not found.");
   }
 
-  // Record the physical-device event.
-  const { error: eventError } = await supabase
-    .from("device_events")
-    .insert({
-      home_id: homeId,
-      device_id: device.id,
-      event_type: "door_opened",
+  await processDeviceEvent(
+    {
+      deviceId: device.id,
+      eventType: "door_opened",
       description: "The front door was opened.",
-    });
-
-  if (eventError) {
-    console.error("Device event error:", eventError);
-    throw new Error("Could not create the device event.");
-  }
-
-  // Check whether the security system is currently armed.
-  const { data: securityStatus, error: securityStatusError } =
-    await supabase
-      .from("security_status")
-      .select("armed")
-      .eq("home_id", homeId)
-      .maybeSingle();
-
-  if (securityStatusError) {
-    console.error(
-      "Security status error:",
-      securityStatusError
-    );
-
-    throw new Error("Could not check security system status.");
-  }
-
-  // Only create a security alert when the system is armed.
-  if (securityStatus?.armed === true) {
-    const { error: alertError } = await supabase
-      .from("alerts")
-      .insert({
-        home_id: homeId,
-        title: "Front Door Opened",
-        description:
-          "The Front Door Sensor detected that the front door was opened while the security system was armed.",
-        severity: "high",
-        resolved: false,
-      });
-
-    if (alertError) {
-      console.error("Alert creation error:", alertError);
-
-      throw new Error(
-        `Alert creation failed: ${alertError.message} | Code: ${alertError.code ?? "unknown"}`
-      );
-    }
-  }
-
-  // Make sure the device is reported as online.
-  const { error: deviceStatusError } = await supabase
-    .from("devices")
-    .update({
-      status: "Online",
-    })
-    .eq("id", device.id)
-    .eq("home_id", homeId);
-
-  if (deviceStatusError) {
-    console.error(
-      "Device status update error:",
-      deviceStatusError
-    );
-
-    throw new Error(
-      "The event was created, but device status could not be updated."
-    );
-  }
+    },
+    { authenticatedUser: true }
+  );
 
   revalidatePath("/dashboard");
   revalidatePath("/alerts");
   revalidatePath("/devices");
   revalidatePath("/security");
+  revalidatePath("/activity");
   revalidatePath("/home");
 }
