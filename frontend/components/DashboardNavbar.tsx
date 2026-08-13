@@ -70,6 +70,13 @@ export default function DashboardNavbar() {
             Devices
           </Link>
 
+          <Link
+            href="/activity"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+          >
+            Activity
+          </Link>
+
           <button
             type="button"
             onClick={handleLogout}
