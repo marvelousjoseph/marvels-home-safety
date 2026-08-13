@@ -54,23 +54,43 @@ export async function simulateFrontDoorOpen() {
     throw new Error("Could not create the device event.");
   }
 
-  // Create a security alert from the device event.
-  const { error: alertError } = await supabase
-    .from("alerts")
-    .insert({
-      home_id: homeId,
-      title: "Front Door Opened",
-      description: "The Front Door Sensor detected that the front door was opened.",
-      severity: "high",
-      resolved: false,
-    });
+  // Check whether the security system is currently armed.
+  const { data: securityStatus, error: securityStatusError } =
+    await supabase
+      .from("security_status")
+      .select("armed")
+      .eq("home_id", homeId)
+      .maybeSingle();
 
-  if (alertError) {
-    console.error("Alert creation error:", alertError);
-
-    throw new Error(
-      `Alert creation failed: ${alertError.message} | Code: ${alertError.code ?? "unknown"}`
+  if (securityStatusError) {
+    console.error(
+      "Security status error:",
+      securityStatusError
     );
+
+    throw new Error("Could not check security system status.");
+  }
+
+  // Only create a security alert when the system is armed.
+  if (securityStatus?.armed === true) {
+    const { error: alertError } = await supabase
+      .from("alerts")
+      .insert({
+        home_id: homeId,
+        title: "Front Door Opened",
+        description:
+          "The Front Door Sensor detected that the front door was opened while the security system was armed.",
+        severity: "high",
+        resolved: false,
+      });
+
+    if (alertError) {
+      console.error("Alert creation error:", alertError);
+
+      throw new Error(
+        `Alert creation failed: ${alertError.message} | Code: ${alertError.code ?? "unknown"}`
+      );
+    }
   }
 
   // Make sure the device is reported as online.
@@ -83,12 +103,19 @@ export async function simulateFrontDoorOpen() {
     .eq("home_id", homeId);
 
   if (deviceStatusError) {
-    console.error("Device status update error:", deviceStatusError);
-    throw new Error("The event and alert were created, but device status could not be updated.");
+    console.error(
+      "Device status update error:",
+      deviceStatusError
+    );
+
+    throw new Error(
+      "The event was created, but device status could not be updated."
+    );
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/alerts");
   revalidatePath("/devices");
   revalidatePath("/security");
+  revalidatePath("/home");
 }
