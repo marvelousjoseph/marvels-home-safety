@@ -4,7 +4,6 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20">
             M
@@ -21,28 +20,33 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop buttons */}
-        <div className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/login"
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+        <div className="hidden items-center gap-6 md:flex">
+          <a
+            href="#how-it-works"
+            className="text-sm text-slate-400 transition hover:text-white"
           >
-            Sign In
-          </Link>
+            How It Works
+          </a>
 
+          <a
+            href="#features"
+            className="text-sm text-slate-400 transition hover:text-white"
+          >
+            Features
+          </a>
+
+          <a
+            href="#contact"
+            className="text-sm text-slate-400 transition hover:text-white"
+          >
+            Contact
+          </a>
+        </div>
+
+        <div className="flex items-center">
           <Link
             href="/signup"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
-          >
-            Get Started
-          </Link>
-        </div>
-
-        {/* Mobile button */}
-        <div className="flex items-center md:hidden">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
           >
             Get Started
           </Link>
