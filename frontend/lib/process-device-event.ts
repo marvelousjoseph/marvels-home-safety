@@ -13,15 +13,12 @@ type ProcessOptions = {
   authenticatedUser?: boolean;
 };
 
-type SecuritySupabaseClient = Awaited<
-  ReturnType<typeof createSupabaseServerClient>
->;
-
 type DeviceForRecording = {
   id: string;
   name: string;
   type: string;
   location: string | null;
+  status: string | null;
 };
 
 type CreateEventRecordingInput = {
@@ -48,11 +45,102 @@ function createServiceClient() {
 }
 
 /**
- * Creates a pending CCTV recording record.
+ * Finds the camera responsible for a device event.
  *
- * IMPORTANT:
- * This uses the trusted server-side Supabase client.
- * Users never insert recording records directly.
+ * Camera events:
+ *   The camera itself is responsible for the recording.
+ *
+ * Sensor events:
+ *   camera_coverage determines which camera covers the
+ *   sensor's location.
+ *
+ * This prevents one camera from being used as a generic
+ * camera for unrelated areas.
+ */
+async function findEventCamera(
+  homeId: string,
+  device: DeviceForRecording
+) {
+  const supabase = createServiceClient();
+
+  const deviceType = device.type.toLowerCase();
+
+  /*
+   * If the event originated from a camera, that exact
+   * camera is responsible for its own event.
+   */
+  if (deviceType.includes("camera")) {
+    return device;
+  }
+
+  /*
+   * Sensors without a location cannot be mapped to a
+   * camera through camera_coverage.
+   */
+  if (!device.location) {
+    return null;
+  }
+
+  /*
+   * Look up the camera assignment through camera_coverage.
+   *
+   * We deliberately do NOT search the devices table by
+   * location anymore.
+   */
+  const { data: coverage, error: coverageError } = await supabase
+    .from("camera_coverage")
+    .select("camera_id, location")
+    .eq("home_id", homeId)
+    .eq("location", device.location)
+    .limit(1)
+    .maybeSingle();
+
+  if (coverageError) {
+    console.error("Camera coverage lookup error:", coverageError);
+
+    throw new Error(
+      `Could not find camera coverage: ${coverageError.message}`
+    );
+  }
+
+  /*
+   * No camera has been assigned to this location.
+   *
+   * The sensor event and alert can still work without
+   * a recording.
+   */
+  if (!coverage?.camera_id) {
+    return null;
+  }
+
+  /*
+   * Fetch the actual camera device.
+   */
+  const { data: camera, error: cameraError } = await supabase
+    .from("devices")
+    .select("id, name, type, location, status")
+    .eq("id", coverage.camera_id)
+    .eq("home_id", homeId)
+    .maybeSingle();
+
+  if (cameraError) {
+    console.error("Assigned camera lookup error:", cameraError);
+
+    throw new Error(
+      `Could not find assigned camera: ${cameraError.message}`
+    );
+  }
+
+  if (!camera) {
+    return null;
+  }
+
+  return camera;
+}
+
+/**
+ * Creates a pending CCTV recording record only when the
+ * responsible camera is actually online.
  */
 async function createEventRecording({
   homeId,
@@ -60,79 +148,47 @@ async function createEventRecording({
   deviceEventId,
   alertId,
 }: CreateEventRecordingInput) {
+  const camera = await findEventCamera(homeId, device);
+
   /*
-   * Use the server secret client here because this is a
-   * trusted server-side operation.
+   * No assigned camera.
    *
-   * This bypasses normal RLS checks without disabling RLS.
-   */
-  const supabase = createServiceClient();
-
-  const deviceType = device.type.toLowerCase();
-
-  /*
-   * If the event came directly from a camera,
-   * associate the recording with that camera.
-   */
-  if (deviceType.includes("camera")) {
-    const { data: recording, error } = await supabase
-      .from("security_event_recordings")
-      .insert({
-        home_id: homeId,
-        device_event_id: deviceEventId,
-        alert_id: alertId,
-        camera_id: device.id,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Recording creation error:", error);
-
-      throw new Error(
-        `Could not create security event recording: ${error.message}`
-      );
-    }
-
-    return recording;
-  }
-
-  /*
-   * For sensors such as doors or smoke detectors,
-   * find a camera covering the same location.
-   */
-  if (!device.location) {
-    return null;
-  }
-
-  const { data: cameras, error: cameraError } = await supabase
-    .from("devices")
-    .select("id, name, type, location")
-    .eq("home_id", homeId)
-    .ilike("type", "%camera%")
-    .eq("location", device.location)
-    .limit(1);
-
-  if (cameraError) {
-    console.error("Camera lookup error:", cameraError);
-
-    throw new Error(
-      `Could not find the event camera: ${cameraError.message}`
-    );
-  }
-
-  const camera = cameras?.[0] ?? null;
-
-  /*
-   * No camera covers this location.
-   * The security event and alert still work.
+   * The security event and alert still exist, but there
+   * is no recording because no camera covers the location.
    */
   if (!camera) {
+    console.log(
+      `No camera assigned to ${device.location ?? "this event location"}.`
+    );
+
     return null;
   }
 
-  const { data: recording, error: recordingError } = await supabase
+  /*
+   * Only an online camera can create a recording.
+   */
+  if (camera.status?.toLowerCase() !== "online") {
+    console.log(
+      `Camera "${camera.name}" is offline. No recording created.`
+    );
+
+    return null;
+  }
+
+  /*
+   * Make sure the assigned device is actually a camera.
+   */
+  if (!camera.type.toLowerCase().includes("camera")) {
+    console.error(
+      `Device "${camera.name}" is assigned as a camera but has type "${camera.type}".`
+    );
+
+    return null;
+  }
+
+  const supabase = createServiceClient();
+
+  const { data: recording, error } = await supabase
     .from("security_event_recordings")
     .insert({
       home_id: homeId,
@@ -144,11 +200,11 @@ async function createEventRecording({
     .select()
     .single();
 
-  if (recordingError) {
-    console.error("Recording creation error:", recordingError);
+  if (error) {
+    console.error("Recording creation error:", error);
 
     throw new Error(
-      `Could not create security event recording: ${recordingError.message}`
+      `Could not create security event recording: ${error.message}`
     );
   }
 
@@ -164,8 +220,10 @@ export async function processDeviceEvent(
   options: ProcessOptions = {}
 ) {
   /*
-   * Normal authenticated operations use the user's server session.
-   * Device integrations can use the service client.
+   * Normal authenticated operations use the user's server
+   * session.
+   *
+   * Device integrations use the trusted service client.
    */
   const supabase = options.authenticatedUser
     ? await createSupabaseServerClient()
@@ -200,7 +258,7 @@ export async function processDeviceEvent(
   }
 
   /*
-   * Find the device.
+   * Find the device that generated the event.
    */
   const { data: device, error: deviceError } = await supabase
     .from("devices")
@@ -213,8 +271,8 @@ export async function processDeviceEvent(
   }
 
   /*
-   * Prevent an authenticated user from triggering
-   * events for another home.
+   * Prevent authenticated users from triggering events
+   * for another home.
    */
   if (homeId && device.home_id !== homeId) {
     throw new Error("Device does not belong to your home.");
@@ -284,7 +342,8 @@ export async function processDeviceEvent(
    *
    * 1. Alert
    * 2. Notifications
-   * 3. CCTV recording placeholder
+   * 3. Recording only if the responsible camera
+   *    exists and is online.
    */
   if (classification.shouldAlert) {
     const { data: createdAlert, error: alertError } = await supabase
@@ -317,10 +376,8 @@ export async function processDeviceEvent(
     });
 
     /*
-     * Create the pending CCTV recording.
-     *
-     * This function uses the trusted server client,
-     * so the user's RLS SELECT policy remains intact.
+     * Resolve the correct camera through camera_coverage
+     * and create a recording only when that camera is online.
      */
     recording = await createEventRecording({
       homeId,
@@ -329,6 +386,7 @@ export async function processDeviceEvent(
         name: device.name,
         type: device.type,
         location: device.location,
+        status: device.status,
       },
       deviceEventId: event.id,
       alertId: createdAlert.id,
