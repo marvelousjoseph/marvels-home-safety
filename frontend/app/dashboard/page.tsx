@@ -1,5 +1,6 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
 import DashboardRealtime from "@/components/DashboardRealtime";
+import AccountActions from "@/components/AccountActions";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -226,9 +227,7 @@ export default async function Dashboard() {
           }`}
         >
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-
             <div className="flex items-start gap-4">
-
               <div
                 className={`mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
                   hasCriticalAlert
@@ -240,13 +239,10 @@ export default async function Dashboard() {
                         : "bg-emerald-500/20 text-emerald-400"
                 }`}
               >
-                <span className="text-xl">
-                  ●
-                </span>
+                <span className="text-xl">●</span>
               </div>
 
               <div>
-
                 <p
                   className={`text-xs font-bold tracking-widest ${
                     hasCriticalAlert
@@ -268,7 +264,6 @@ export default async function Dashboard() {
                 <p className="mt-1 max-w-xl text-sm text-slate-400">
                   {statusDescription}
                 </p>
-
               </div>
             </div>
 
@@ -285,13 +280,11 @@ export default async function Dashboard() {
             >
               {statusLabel}
             </div>
-
           </div>
         </section>
 
         {/* Statistics */}
         <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <p className="text-sm text-slate-400">
               Active Alerts
@@ -375,7 +368,6 @@ export default async function Dashboard() {
                 : "No devices connected"}
             </p>
           </div>
-
         </section>
 
         {/* Main Content */}
@@ -383,9 +375,7 @@ export default async function Dashboard() {
 
           {/* Recent Security Activity */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 lg:col-span-2">
-
             <div className="flex items-center justify-between">
-
               <div>
                 <h2 className="text-xl font-bold">
                   Recent Security Activity
@@ -402,15 +392,11 @@ export default async function Dashboard() {
               >
                 View all
               </a>
-
             </div>
 
             <div className="mt-6 space-y-3">
-
               {events.length === 0 ? (
-
                 <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
-
                   <p className="font-medium">
                     No security activity yet
                   </p>
@@ -418,11 +404,8 @@ export default async function Dashboard() {
                   <p className="mt-1 text-sm text-slate-400">
                     Your security devices have not reported any events.
                   </p>
-
                 </div>
-
               ) : (
-
                 events.map((event) => {
                   const device = Array.isArray(event.devices)
                     ? event.devices[0]
@@ -433,17 +416,13 @@ export default async function Dashboard() {
                       key={event.id}
                       className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-
                       <div className="flex min-w-0 items-start gap-4">
-
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-xl">
                           {getEventIcon(event.event_type)}
                         </div>
 
                         <div className="min-w-0">
-
                           <div className="flex flex-wrap items-center gap-3">
-
                             <p className="truncate font-medium">
                               {device?.name || "Security Device"}
                             </p>
@@ -453,7 +432,6 @@ export default async function Dashboard() {
                                 ?.replaceAll("_", " ")
                                 .toUpperCase()}
                             </span>
-
                           </div>
 
                           <p className="mt-1 text-sm text-slate-400">
@@ -465,29 +443,22 @@ export default async function Dashboard() {
                               {device.location}
                             </p>
                           )}
-
                         </div>
-
                       </div>
 
                       <span className="shrink-0 text-sm text-slate-500">
                         {formatEventTime(event.created_at)}
                       </span>
-
                     </div>
                   );
                 })
-
               )}
-
             </div>
           </div>
 
           {/* Device Overview */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
             <div>
-
               <h2 className="text-xl font-bold">
                 Device Overview
               </h2>
@@ -495,15 +466,11 @@ export default async function Dashboard() {
               <p className="mt-1 text-sm text-slate-400">
                 Security devices connected to your home.
               </p>
-
             </div>
 
             <div className="mt-6 space-y-3">
-
               {devices.length === 0 ? (
-
                 <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
-
                   <p className="font-medium">
                     No devices connected
                   </p>
@@ -511,20 +478,14 @@ export default async function Dashboard() {
                   <p className="mt-1 text-sm text-slate-400">
                     Add a security device to get started.
                   </p>
-
                 </div>
-
               ) : (
-
                 devices.slice(0, 5).map((device) => (
-
                   <div
                     key={device.id}
                     className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4"
                   >
-
                     <div className="min-w-0">
-
                       <p className="truncate font-medium">
                         {device.name}
                       </p>
@@ -534,11 +495,9 @@ export default async function Dashboard() {
                           device.type ||
                           "Security device"}
                       </p>
-
                     </div>
 
                     <div className="ml-3 flex items-center gap-2">
-
                       <span
                         className={`h-2.5 w-2.5 rounded-full ${
                           device.status?.toLowerCase() === "online"
@@ -550,15 +509,10 @@ export default async function Dashboard() {
                       <span className="text-xs font-medium text-slate-400">
                         {device.status || "Unknown"}
                       </span>
-
                     </div>
-
                   </div>
-
                 ))
-
               )}
-
             </div>
 
             <a
@@ -567,10 +521,11 @@ export default async function Dashboard() {
             >
               Manage devices
             </a>
-
           </div>
-
         </section>
+
+        {/* Account */}
+        <AccountActions />
       </div>
     </main>
   );

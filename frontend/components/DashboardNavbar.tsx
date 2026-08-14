@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard" },
@@ -12,24 +11,16 @@ const navigation = [
   { name: "Alerts", href: "/alerts" },
   { name: "Devices", href: "/devices" },
   { name: "Activity", href: "/activity" },
-  { name: "Notifications", href: "/notifications" },
+  { name: "Recordings", href: "/recordings" },
 ];
 
 export default function DashboardNavbar() {
-  const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
-        {/* Brand */}
         <Link
           href="/dashboard"
           className="flex items-center gap-3"
@@ -50,10 +41,12 @@ export default function DashboardNavbar() {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden items-center gap-1 md:flex">
           {navigation.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/dashboard" &&
+                pathname.startsWith(`${item.href}/`));
 
             return (
               <Link
@@ -69,17 +62,8 @@ export default function DashboardNavbar() {
               </Link>
             );
           })}
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="ml-3 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            Log Out
-          </button>
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           type="button"
           aria-label="Toggle navigation menu"
@@ -95,12 +79,14 @@ export default function DashboardNavbar() {
         </button>
       </div>
 
-      {/* Mobile Navigation */}
       {menuOpen && (
         <div className="border-t border-slate-800 bg-slate-950 px-6 py-4 md:hidden">
           <div className="mx-auto max-w-7xl space-y-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard" &&
+                  pathname.startsWith(`${item.href}/`));
 
               return (
                 <Link
@@ -117,14 +103,6 @@ export default function DashboardNavbar() {
                 </Link>
               );
             })}
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-3 w-full rounded-lg border border-slate-700 px-4 py-3 text-left text-sm font-medium text-white transition hover:bg-slate-800"
-            >
-              Log Out
-            </button>
           </div>
         </div>
       )}

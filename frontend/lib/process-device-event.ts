@@ -25,7 +25,6 @@ type DeviceForRecording = {
 };
 
 type CreateEventRecordingInput = {
-  supabase: SecuritySupabaseClient;
   homeId: string;
   device: DeviceForRecording;
   deviceEventId: string;
@@ -49,25 +48,30 @@ function createServiceClient() {
 }
 
 /**
- * Creates a pending CCTV recording record for a security event.
+ * Creates a pending CCTV recording record.
  *
- * Users NEVER create these records themselves.
- * This function runs from the trusted server-side event pipeline.
- *
- * The actual CCTV video will be connected later.
- * Until then, the recording remains "pending".
+ * IMPORTANT:
+ * This uses the trusted server-side Supabase client.
+ * Users never insert recording records directly.
  */
 async function createEventRecording({
-  supabase,
   homeId,
   device,
   deviceEventId,
   alertId,
 }: CreateEventRecordingInput) {
+  /*
+   * Use the server secret client here because this is a
+   * trusted server-side operation.
+   *
+   * This bypasses normal RLS checks without disabling RLS.
+   */
+  const supabase = createServiceClient();
+
   const deviceType = device.type.toLowerCase();
 
   /*
-   * If the event itself came from a camera,
+   * If the event came directly from a camera,
    * associate the recording with that camera.
    */
   if (deviceType.includes("camera")) {
@@ -85,19 +89,18 @@ async function createEventRecording({
 
     if (error) {
       console.error("Recording creation error:", error);
-      throw new Error("Could not create security event recording.");
+
+      throw new Error(
+        `Could not create security event recording: ${error.message}`
+      );
     }
 
     return recording;
   }
 
   /*
-   * For sensors such as smoke detectors or door sensors,
-   * find a camera in the same home and location.
-   *
-   * We intentionally do NOT choose a random camera.
-   * If there is no camera covering the location,
-   * no recording record is created.
+   * For sensors such as doors or smoke detectors,
+   * find a camera covering the same location.
    */
   if (!device.location) {
     return null;
@@ -113,16 +116,19 @@ async function createEventRecording({
 
   if (cameraError) {
     console.error("Camera lookup error:", cameraError);
-    throw new Error("Could not find the event camera.");
+
+    throw new Error(
+      `Could not find the event camera: ${cameraError.message}`
+    );
   }
 
   const camera = cameras?.[0] ?? null;
 
+  /*
+   * No camera covers this location.
+   * The security event and alert still work.
+   */
   if (!camera) {
-    /*
-     * There is no camera covering this location.
-     * The security event and alert still work normally.
-     */
     return null;
   }
 
@@ -140,7 +146,10 @@ async function createEventRecording({
 
   if (recordingError) {
     console.error("Recording creation error:", recordingError);
-    throw new Error("Could not create security event recording.");
+
+    throw new Error(
+      `Could not create security event recording: ${recordingError.message}`
+    );
   }
 
   return recording;
@@ -154,6 +163,10 @@ export async function processDeviceEvent(
   }: DeviceEventInput,
   options: ProcessOptions = {}
 ) {
+  /*
+   * Normal authenticated operations use the user's server session.
+   * Device integrations can use the service client.
+   */
   const supabase = options.authenticatedUser
     ? await createSupabaseServerClient()
     : createServiceClient();
@@ -161,8 +174,7 @@ export async function processDeviceEvent(
   let homeId: string | null = null;
 
   /*
-   * When a normal logged-in user triggers the event,
-   * verify that the device belongs to that user's home.
+   * Verify the authenticated user's home.
    */
   if (options.authenticatedUser) {
     const {
@@ -188,7 +200,7 @@ export async function processDeviceEvent(
   }
 
   /*
-   * Find the device that generated the event.
+   * Find the device.
    */
   const { data: device, error: deviceError } = await supabase
     .from("devices")
@@ -201,8 +213,8 @@ export async function processDeviceEvent(
   }
 
   /*
-   * Prevent an authenticated user from sending an event
-   * for another user's home.
+   * Prevent an authenticated user from triggering
+   * events for another home.
    */
   if (homeId && device.home_id !== homeId) {
     throw new Error("Device does not belong to your home.");
@@ -224,13 +236,15 @@ export async function processDeviceEvent(
     .maybeSingle();
 
   if (securityError) {
-    throw new Error("Could not check security status.");
+    throw new Error(
+      `Could not check security status: ${securityError.message}`
+    );
   }
 
   const armed = securityStatus?.armed === true;
 
   /*
-   * Classify the incoming device event.
+   * Classify the incoming event.
    */
   const classification = classifySecurityEvent({
     deviceName: device.name,
@@ -255,7 +269,10 @@ export async function processDeviceEvent(
 
   if (eventError) {
     console.error("Device event error:", eventError);
-    throw new Error("Could not create device event.");
+
+    throw new Error(
+      `Could not create device event: ${eventError.message}`
+    );
   }
 
   let alert: Record<string, unknown> | null = null;
@@ -263,8 +280,11 @@ export async function processDeviceEvent(
   let recording: Record<string, unknown> | null = null;
 
   /*
-   * Only events that the classifier considers security-alert-worthy
-   * proceed into the alert, notification, and CCTV recording pipeline.
+   * Security-alert-worthy events create:
+   *
+   * 1. Alert
+   * 2. Notifications
+   * 3. CCTV recording placeholder
    */
   if (classification.shouldAlert) {
     const { data: createdAlert, error: alertError } = await supabase
@@ -281,7 +301,10 @@ export async function processDeviceEvent(
 
     if (alertError) {
       console.error("Alert creation error:", alertError);
-      throw new Error("Could not create security alert.");
+
+      throw new Error(
+        `Could not create security alert: ${alertError.message}`
+      );
     }
 
     alert = createdAlert;
@@ -294,14 +317,12 @@ export async function processDeviceEvent(
     });
 
     /*
-     * Automatically create the CCTV event-recording record.
+     * Create the pending CCTV recording.
      *
-     * Users do NOT upload or insert videos themselves.
-     * The future CCTV integration will attach the actual
-     * video/storage information to this record.
+     * This function uses the trusted server client,
+     * so the user's RLS SELECT policy remains intact.
      */
     recording = await createEventRecording({
-      supabase: supabase as SecuritySupabaseClient,
       homeId,
       device: {
         id: device.id,
@@ -315,7 +336,7 @@ export async function processDeviceEvent(
   }
 
   /*
-   * A successfully reporting device is considered online.
+   * A successfully reporting device is online.
    */
   const { error: deviceStatusError } = await supabase
     .from("devices")
@@ -325,7 +346,10 @@ export async function processDeviceEvent(
 
   if (deviceStatusError) {
     console.error("Device status error:", deviceStatusError);
-    throw new Error("Could not update device status.");
+
+    throw new Error(
+      `Could not update device status: ${deviceStatusError.message}`
+    );
   }
 
   return {

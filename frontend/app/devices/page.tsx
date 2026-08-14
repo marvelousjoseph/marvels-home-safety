@@ -1,7 +1,10 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
 import DevicesRealtime from "@/components/DevicesRealtime";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { simulateFrontDoorOpen } from "./actions";
+import {
+  simulateFrontDoorOpen,
+  simulateLivingRoomPerson,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -283,6 +286,26 @@ export default async function DevicesPage() {
                             className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.98]"
                           >
                             🚪 Simulate Door Open
+                          </button>
+                        </form>
+
+                        <p className="mt-2 text-center text-xs text-slate-500">
+                          Development testing only
+                        </p>
+
+                      </div>
+                    )}
+
+                    {/* Living Room Camera Testing */}
+                    {device.name === "Living Room Camera" && (
+                      <div className="mt-5 border-t border-slate-800 pt-5">
+
+                        <form action={simulateLivingRoomPerson}>
+                          <button
+                            type="submit"
+                            className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 active:scale-[0.98]"
+                          >
+                            📹 Simulate Person Detection
                           </button>
                         </form>
 

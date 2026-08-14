@@ -65,6 +65,14 @@ async function getSecurityData() {
   };
 }
 
+function isCamera(device: any) {
+  return device.type?.toLowerCase().includes("camera");
+}
+
+function isOnline(device: any) {
+  return device.status?.toLowerCase() === "online";
+}
+
 export default async function SecurityPage() {
   const { armed, alerts, devices } = await getSecurityData();
 
@@ -72,13 +80,25 @@ export default async function SecurityPage() {
     (alert) => alert.resolved === false
   );
 
-  const onlineDevices = devices.filter(
-    (device) => device.status?.toLowerCase() === "online"
-  );
+  const onlineDevices = devices.filter(isOnline);
+
+  const cameras = devices.filter(isCamera);
+
+  const onlineCameras = cameras.filter(isOnline);
 
   const criticalAlerts = activeAlerts.filter(
     (alert) => alert.severity?.toLowerCase() === "critical"
   );
+
+  /*
+   * This is intentionally an environment variable rather than a fake
+   * camera URL. When a real browser-compatible CCTV stream is connected,
+   * it can be supplied through NEXT_PUBLIC_CCTV_STREAM_URL.
+   *
+   * Supported production approaches can include HLS or WebRTC.
+   * Raw RTSP URLs should not be placed directly into a browser video tag.
+   */
+  const liveStreamUrl = process.env.NEXT_PUBLIC_CCTV_STREAM_URL ?? "";
 
   return (
     <>
@@ -97,10 +117,141 @@ export default async function SecurityPage() {
           </h1>
 
           <p className="mt-2 text-slate-400">
-            Control and monitor the protection of your home.
+            Monitor your home, cameras, sensors, and security events.
           </p>
         </div>
 
+        {/* 24/7 CCTV */}
+        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-400">
+                LIVE SECURITY
+              </p>
+
+              <h2 className="mt-1 text-2xl font-semibold">
+                24/7 CCTV
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Live camera monitoring. Event recordings are stored separately
+                for review in Alerts and Recordings.
+              </p>
+            </div>
+
+            <div
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                onlineCameras.length > 0
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              ● {onlineCameras.length} camera
+              {onlineCameras.length === 1 ? "" : "s"} online
+            </div>
+          </div>
+
+          {cameras.length === 0 ? (
+            <div className="mt-6 flex min-h-[360px] items-center justify-center rounded-xl border border-slate-800 bg-slate-950">
+              <div className="text-center">
+                <div className="text-5xl">📹</div>
+
+                <h3 className="mt-4 text-lg font-semibold">
+                  No CCTV cameras connected
+                </h3>
+
+                <p className="mt-2 max-w-md text-sm text-slate-500">
+                  Connect a camera device to your home to begin live CCTV
+                  monitoring.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              {cameras.map((camera) => {
+                const cameraOnline = isOnline(camera);
+
+                return (
+                  <div
+                    key={camera.id}
+                    className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
+                  >
+                    <div className="relative aspect-video bg-black">
+                      {liveStreamUrl && cameraOnline ? (
+                        <video
+                          className="h-full w-full object-contain"
+                          src={liveStreamUrl}
+                          controls
+                          autoPlay
+                          muted
+                          playsInline
+                        >
+                          Your browser does not support video playback.
+                        </video>
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                          <div className="text-5xl">📹</div>
+
+                          <p className="mt-4 text-lg font-semibold text-white">
+                            {camera.name}
+                          </p>
+
+                          <p className="mt-2 text-sm text-slate-500">
+                            {cameraOnline
+                              ? "Camera is online. Live video stream is not connected yet."
+                              : "Camera is currently offline."}
+                          </p>
+
+                          {cameraOnline && (
+                            <div className="mt-4 rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-400">
+                              LIVE STREAM NOT CONNECTED
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4">
+                      <div>
+                        <p className="font-semibold">
+                          {camera.name}
+                        </p>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          {camera.location || "Location not specified"}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          cameraOnline
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : "bg-red-500/10 text-red-400"
+                        }`}
+                      >
+                        {cameraOnline ? "ONLINE" : "OFFLINE"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-sm font-medium text-slate-300">
+              CCTV architecture
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              The live camera stream is delivered directly through the CCTV
+              streaming layer. Supabase Storage is used for saved security
+              event footage, not as the 24/7 live camera viewer.
+            </p>
+          </div>
+        </section>
+
+        {/* Security Status */}
         <section
           className={`mt-8 rounded-2xl border p-8 ${
             armed
@@ -147,6 +298,7 @@ export default async function SecurityPage() {
           </div>
         </section>
 
+        {/* Protection Controls */}
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <p className="text-sm text-slate-400">
             PROTECTION CONTROLS
@@ -183,6 +335,7 @@ export default async function SecurityPage() {
           </div>
         </section>
 
+        {/* Security Monitoring */}
         <section className="mt-8">
           <h2 className="text-xl font-semibold">
             Security Monitoring
@@ -216,16 +369,17 @@ export default async function SecurityPage() {
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <p className="text-sm text-slate-400">Cameras</p>
               <p className="mt-3 text-xl font-semibold">
-                {onlineDevices.length > 0 ? "Online" : "Offline"}
+                {onlineCameras.length > 0 ? "Online" : "Offline"}
               </p>
               <p className="mt-1 text-sm text-emerald-400">
-                {onlineDevices.length} device
-                {onlineDevices.length === 1 ? "" : "s"} online
+                {onlineCameras.length} camera
+                {onlineCameras.length === 1 ? "" : "s"} online
               </p>
             </div>
           </div>
         </section>
 
+        {/* Active Security Events */}
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
@@ -283,7 +437,7 @@ export default async function SecurityPage() {
                     </div>
 
                     <span className="text-sm text-slate-500">
-                      {new Date(alert.created_at).toLocaleString()}
+                      {new Date(alert.created_at).toLocaleString("en-NG")}
                     </span>
                   </div>
                 </div>
@@ -292,6 +446,7 @@ export default async function SecurityPage() {
           </div>
         </section>
 
+        {/* System Information */}
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">
             System Information
