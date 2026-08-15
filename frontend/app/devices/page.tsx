@@ -1,12 +1,23 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
 import DevicesRealtime from "@/components/DevicesRealtime";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import CameraForm from "./camera-form";
 import {
   simulateFrontDoorOpen,
   simulateLivingRoomPerson,
 } from "./actions";
+import { testCameraConnection } from "./camera-actions";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
+
+type CameraConnection = {
+  device_id: string;
+  ip_address: string;
+  port: number;
+  username: string | null;
+  protocol: string;
+  stream_path: string | null;
+};
 
 async function getDevices() {
   const supabase = await createSupabaseServerClient();
@@ -30,7 +41,7 @@ async function getDevices() {
     return [];
   }
 
-  const { data, error } = await supabase
+  const { data: devices, error } = await supabase
     .from("devices")
     .select("*")
     .eq("home_id", membership.home_id)
@@ -41,10 +52,37 @@ async function getDevices() {
     return [];
   }
 
-  return data ?? [];
+  const { data: cameraConnections, error: cameraError } = await supabase
+    .from("camera_connections")
+    .select(
+      "device_id, ip_address, port, username, protocol, stream_path"
+    )
+    .eq("home_id", membership.home_id);
+
+  if (cameraError) {
+    console.error(
+      "Error loading camera connections:",
+      cameraError
+    );
+  }
+
+  const connectionsByDevice = new Map<string, CameraConnection>();
+
+  for (const connection of cameraConnections ?? []) {
+    connectionsByDevice.set(connection.device_id, connection);
+  }
+
+  return (devices ?? []).map((device) => ({
+    ...device,
+    cameraConnection:
+      connectionsByDevice.get(device.id) ?? null,
+  }));
 }
 
-function getDeviceIcon(type: string | null, name: string | null) {
+function getDeviceIcon(
+  type: string | null,
+  name: string | null
+) {
   const value = `${type ?? ""} ${name ?? ""}`.toLowerCase();
 
   if (value.includes("camera")) {
@@ -66,6 +104,35 @@ function getDeviceIcon(type: string | null, name: string | null) {
   return "📡";
 }
 
+function getStatusStyle(status: string | null) {
+  const value = status?.toLowerCase();
+
+  if (value === "online") {
+    return {
+      dot: "bg-emerald-400",
+      text: "text-emerald-400",
+      badge: "bg-emerald-500/20 text-emerald-400",
+      label: "ONLINE",
+    };
+  }
+
+  if (value === "configured") {
+    return {
+      dot: "bg-blue-400",
+      text: "text-blue-400",
+      badge: "bg-blue-500/20 text-blue-400",
+      label: "CONFIGURED",
+    };
+  }
+
+  return {
+    dot: "bg-slate-600",
+    text: "text-slate-500",
+    badge: "bg-slate-500/20 text-slate-400",
+    label: "OFFLINE",
+  };
+}
+
 export default async function DevicesPage() {
   const devices = await getDevices();
 
@@ -74,7 +141,13 @@ export default async function DevicesPage() {
   );
 
   const offlineDevices = devices.filter(
-    (device) => device.status?.toLowerCase() !== "online"
+    (device) =>
+      device.status?.toLowerCase() !== "online" &&
+      device.status?.toLowerCase() !== "configured"
+  );
+
+  const configuredDevices = devices.filter(
+    (device) => device.status?.toLowerCase() === "configured"
   );
 
   return (
@@ -109,7 +182,7 @@ export default async function DevicesPage() {
         </section>
 
         {/* Device Statistics */}
-        <section className="mt-8 grid gap-5 sm:grid-cols-3">
+        <section className="mt-8 grid gap-5 sm:grid-cols-4">
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <p className="text-sm text-slate-400">
@@ -135,7 +208,21 @@ export default async function DevicesPage() {
             </p>
 
             <p className="mt-2 text-sm text-emerald-400">
-              Devices operating normally
+              Operating normally
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-blue-900 bg-blue-950/20 p-6">
+            <p className="text-sm text-slate-400">
+              Configured
+            </p>
+
+            <p className="mt-3 text-3xl font-bold text-blue-400">
+              {configuredDevices.length}
+            </p>
+
+            <p className="mt-2 text-sm text-blue-400">
+              Ready for gateway
             </p>
           </div>
 
@@ -156,7 +243,7 @@ export default async function DevicesPage() {
               }`}
             >
               {offlineDevices.length === 0
-                ? "All devices connected"
+                ? "No offline devices"
                 : "Check device connection"}
             </p>
           </div>
@@ -197,8 +284,10 @@ export default async function DevicesPage() {
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
               {devices.map((device) => {
-                const isOnline =
-                  device.status?.toLowerCase() === "online";
+                const status = getStatusStyle(device.status);
+                const isCamera =
+                  device.type?.toLowerCase().includes("camera") ||
+                  device.name?.toLowerCase().includes("camera");
 
                 return (
                   <div
@@ -238,11 +327,7 @@ export default async function DevicesPage() {
                       <div className="flex items-center gap-2">
 
                         <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            isOnline
-                              ? "bg-emerald-400"
-                              : "bg-slate-600"
-                          }`}
+                          className={`h-2.5 w-2.5 rounded-full ${status.dot}`}
                         />
 
                         <span className="text-sm font-medium">
@@ -252,13 +337,9 @@ export default async function DevicesPage() {
                       </div>
 
                       <span
-                        className={`text-xs font-semibold ${
-                          isOnline
-                            ? "text-emerald-400"
-                            : "text-slate-500"
-                        }`}
+                        className={`rounded-full px-2 py-1 text-[10px] font-bold ${status.badge}`}
                       >
-                        {isOnline ? "CONNECTED" : "OFFLINE"}
+                        {status.label}
                       </span>
 
                     </div>
@@ -275,6 +356,103 @@ export default async function DevicesPage() {
                       </p>
 
                     </div>
+
+                    {/* Camera Connection */}
+                    {isCamera && device.cameraConnection && (
+                      <div className="mt-5 border-t border-slate-800 pt-5">
+
+                        <p className="text-[10px] font-bold tracking-wider text-slate-500">
+                          CAMERA CONNECTION
+                        </p>
+
+                        <div className="mt-3 space-y-2 rounded-xl bg-slate-950 p-3">
+
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500">
+                              Protocol
+                            </span>
+
+                            <span className="font-mono text-xs uppercase text-slate-300">
+                              {device.cameraConnection.protocol}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500">
+                              Address
+                            </span>
+
+                            <span className="font-mono text-xs text-slate-300">
+                              {device.cameraConnection.ip_address}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500">
+                              Port
+                            </span>
+
+                            <span className="font-mono text-xs text-slate-300">
+                              {device.cameraConnection.port}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500">
+                              Username
+                            </span>
+
+                            <span className="font-mono text-xs text-slate-300">
+                              {device.cameraConnection.username || "Not set"}
+                            </span>
+                          </div>
+
+                          {device.cameraConnection.stream_path && (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-slate-500">
+                                Stream
+                              </span>
+
+                              <span className="max-w-[150px] truncate font-mono text-xs text-slate-300">
+                                {device.cameraConnection.stream_path}
+                              </span>
+                            </div>
+                          )}
+
+                        </div>
+
+                        <form
+                          action={async () => {
+                            "use server";
+
+                            await testCameraConnection(device.id);
+                          }}
+                          className="mt-3"
+                        >
+                          <button
+                            type="submit"
+                            className="w-full rounded-xl border border-blue-700 bg-blue-600/10 px-4 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-600/20"
+                          >
+                            🔌 Test Camera Connection
+                          </button>
+                        </form>
+
+                        {device.cameraConnection.protocol === "rtsp" && (
+                          <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+                            RTSP testing will be handled by the future
+                            Marvels home-network gateway.
+                          </p>
+                        )}
+
+                        {device.cameraConnection.protocol !== "rtsp" && (
+                          <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+                            HTTP/HTTPS connection test runs from the
+                            Marvels server.
+                          </p>
+                        )}
+
+                      </div>
+                    )}
 
                     {/* Front Door Testing */}
                     {device.name === "Front Door Sensor" && (
@@ -325,6 +503,9 @@ export default async function DevicesPage() {
 
         )}
 
+        {/* Add Camera */}
+        <CameraForm />
+
         {/* Development Testing Explanation */}
         <section className="mt-8 rounded-2xl border border-blue-900/50 bg-blue-950/20 p-6">
 
@@ -340,14 +521,14 @@ export default async function DevicesPage() {
               </h2>
 
               <p className="mt-1 text-sm leading-6 text-slate-400">
-                The Front Door Sensor simulation creates a real device event
-                in Supabase. If your security system is armed, it also creates
-                a high-severity security alert.
+                The Front Door Sensor simulation creates a real device
+                event in Supabase. If your security system is armed, it
+                also creates a high-severity security alert.
               </p>
 
               <p className="mt-2 text-xs text-slate-500">
-                Activity, Alerts, Dashboard, and Security pages update from
-                the same Supabase data.
+                Activity, Alerts, Dashboard, and Security pages update
+                from the same Supabase data.
               </p>
             </div>
 
