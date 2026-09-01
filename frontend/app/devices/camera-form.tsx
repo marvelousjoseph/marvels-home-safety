@@ -268,7 +268,7 @@ export default function CameraForm() {
 
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Some cameras require a specific stream path. Check the
-            camera manufacturer's documentation if you are unsure.
+            camera manufacturer&apos;s documentation if you are unsure.
           </p>
         </div>
 

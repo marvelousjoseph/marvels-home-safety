@@ -1,5 +1,6 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
 import SecurityRealtime from "@/components/SecurityRealtime";
+import LiveCamera from "@/components/cameras/LiveCamera";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { armSystem, disarmSystem } from "./actions";
 
@@ -65,11 +66,14 @@ async function getSecurityData() {
   };
 }
 
-function isCamera(device: any) {
+type SecurityData = Awaited<ReturnType<typeof getSecurityData>>;
+type SecurityDevice = SecurityData["devices"][number];
+
+function isCamera(device: SecurityDevice) {
   return device.type?.toLowerCase().includes("camera");
 }
 
-function isOnline(device: any) {
+function isOnline(device: SecurityDevice) {
   return device.status?.toLowerCase() === "online";
 }
 
@@ -248,6 +252,36 @@ export default async function SecurityPage() {
               streaming layer. Supabase Storage is used for saved security
               event footage, not as the 24/7 live camera viewer.
             </p>
+          </div>
+
+          {/* Local Webcam Test */}
+          <div className="mt-6">
+            <div className="mb-4">
+              <p className="text-sm font-medium text-blue-400">
+                DEVELOPMENT TEST
+              </p>
+
+              <h3 className="mt-1 text-xl font-semibold text-white">
+                Local Camera Test
+              </h3>
+
+              <p className="mt-1 max-w-2xl text-sm text-slate-400">
+                This uses the computer&apos;s built-in webcam only for MVP
+                testing. It is separate from the production CCTV streaming
+                layer and does not replace a connected security camera.
+              </p>
+            </div>
+
+            <div className="max-w-3xl">
+              <LiveCamera
+                cameraId={
+                  cameras.find(
+                    (camera) => camera.name === "Living Room Camera"
+                  )?.id ?? ""
+                }
+                cameraName="Living Room Camera — Laptop Webcam"
+              />
+            </div>
           </div>
         </section>
 
