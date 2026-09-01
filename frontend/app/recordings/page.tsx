@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { createClient } from "@supabase/supabase-js";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -35,6 +37,22 @@ type Recording = {
   } | null;
 };
 
+function createServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    throw new Error("Supabase server configuration is missing.");
+  }
+
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 async function getRecordings(): Promise<Recording[]> {
   const supabase = await createSupabaseServerClient();
 
@@ -46,7 +64,10 @@ async function getRecordings(): Promise<Recording[]> {
     return [];
   }
 
-  const { data: membership, error: membershipError } = await supabase
+  const {
+    data: membership,
+    error: membershipError,
+  } = await supabase
     .from("home_members")
     .select("home_id")
     .eq("user_id", user.id)
@@ -54,10 +75,18 @@ async function getRecordings(): Promise<Recording[]> {
     .maybeSingle();
 
   if (membershipError || !membership?.home_id) {
+    console.error(
+      "Could not determine user's home:",
+      membershipError
+    );
+
     return [];
   }
 
-  const { data, error } = await supabase
+  const {
+    data,
+    error,
+  } = await supabase
     .from("security_event_recordings")
     .select(`
       id,
@@ -88,14 +117,82 @@ async function getRecordings(): Promise<Recording[]> {
       )
     `)
     .eq("home_id", membership.home_id)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false,
+    });
 
   if (error) {
-    console.error("Error loading security recordings:", error);
+    console.error(
+      "Error loading security recordings:",
+      error
+    );
+
     return [];
   }
 
-  return (data ?? []) as unknown as Recording[];
+  const recordings = (data ?? []) as unknown as Recording[];
+
+  /*
+   * Generate secure temporary URLs using the server-side
+   * Supabase service client.
+   *
+   * The bucket remains PRIVATE.
+   *
+   * storage_path is always treated as the source of truth.
+   */
+  const service = createServiceClient();
+
+  const recordingsWithSignedUrls = await Promise.all(
+    recordings.map(async (recording) => {
+      const status = recording.status?.toLowerCase();
+
+      if (
+        status !== "ready" ||
+        !recording.storage_path
+      ) {
+        return {
+          ...recording,
+          video_url: null,
+        };
+      }
+
+      const {
+        data: signedUrlData,
+        error: signedUrlError,
+      } = await service.storage
+        .from("security-recordings")
+        .createSignedUrl(
+          recording.storage_path,
+          60 * 60
+        );
+
+      if (
+        signedUrlError ||
+        !signedUrlData?.signedUrl
+      ) {
+        console.error(
+          "Could not create recording signed URL:",
+          {
+            recordingId: recording.id,
+            storagePath: recording.storage_path,
+            error: signedUrlError,
+          }
+        );
+
+        return {
+          ...recording,
+          video_url: null,
+        };
+      }
+
+      return {
+        ...recording,
+        video_url: signedUrlData.signedUrl,
+      };
+    })
+  );
+
+  return recordingsWithSignedUrls;
 }
 
 function formatDate(date: string | null) {
@@ -103,23 +200,33 @@ function formatDate(date: string | null) {
     return "Time unavailable";
   }
 
-  return new Date(date).toLocaleString("en-NG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return new Date(date).toLocaleString(
+    "en-NG",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  );
 }
 
-function formatEventType(eventType: string | null | undefined) {
+function formatEventType(
+  eventType: string | null | undefined
+) {
   if (!eventType) {
     return "Security Event";
   }
 
   return eventType
     .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    .replace(
+      /\b\w/g,
+      (letter) => letter.toUpperCase()
+    );
 }
 
-function getSeverityClass(severity: string | null | undefined) {
+function getSeverityClass(
+  severity: string | null | undefined
+) {
   const value = severity?.toLowerCase();
 
   if (value === "critical") {
@@ -137,7 +244,9 @@ function getSeverityClass(severity: string | null | undefined) {
   return "bg-blue-500/10 text-blue-400 border-blue-500/20";
 }
 
-function getStatusClass(status: string | null | undefined) {
+function getStatusClass(
+  status: string | null | undefined
+) {
   const value = status?.toLowerCase();
 
   if (value === "ready") {
@@ -161,7 +270,8 @@ export default async function RecordingsPage() {
   );
 
   const pendingRecordings = recordings.filter(
-    (recording) => recording.status?.toLowerCase() === "pending"
+    (recording) =>
+      recording.status?.toLowerCase() === "pending"
   );
 
   return (
@@ -169,7 +279,6 @@ export default async function RecordingsPage() {
       <DashboardNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-10">
-        {/* Header */}
         <section>
           <p className="text-sm font-semibold tracking-wider text-blue-400">
             MARVEL&apos;S HOME SAFETY
@@ -194,7 +303,6 @@ export default async function RecordingsPage() {
           </div>
         </section>
 
-        {/* Statistics */}
         <section className="mt-8 grid gap-5 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <p className="text-sm text-slate-400">
@@ -239,7 +347,6 @@ export default async function RecordingsPage() {
           </div>
         </section>
 
-        {/* Recordings */}
         <section className="mt-8">
           <div className="mb-5">
             <h2 className="text-xl font-semibold">
@@ -269,20 +376,29 @@ export default async function RecordingsPage() {
           ) : (
             <div className="space-y-6">
               {recordings.map((recording) => {
-                const camera = Array.isArray(recording.camera)
+                const camera = Array.isArray(
+                  recording.camera
+                )
                   ? recording.camera[0]
                   : recording.camera;
 
-                const event = Array.isArray(recording.event)
+                const event = Array.isArray(
+                  recording.event
+                )
                   ? recording.event[0]
                   : recording.event;
 
-                const alert = Array.isArray(recording.alert)
+                const alert = Array.isArray(
+                  recording.alert
+                )
                   ? recording.alert[0]
                   : recording.alert;
 
-                const hasVideo = Boolean(recording.video_url);
-                const status = recording.status?.toLowerCase();
+                const hasVideo =
+                  Boolean(recording.video_url);
+
+                const status =
+                  recording.status?.toLowerCase();
 
                 return (
                   <article
@@ -290,28 +406,31 @@ export default async function RecordingsPage() {
                     className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
                   >
                     <div className="grid lg:grid-cols-[minmax(0,1fr)_380px]">
-                      {/* Video / Preview */}
                       <div className="bg-black">
                         {hasVideo ? (
                           <video
                             className="aspect-video h-full w-full bg-black object-contain"
                             controls
                             preload="metadata"
+                            playsInline
                             poster={
-                              recording.thumbnail_url || undefined
+                              recording.thumbnail_url ||
+                              undefined
                             }
                           >
                             <source
                               src={recording.video_url || undefined}
-                              type="video/mp4"
+                              type="video/webm"
                             />
                             Your browser does not support video playback.
                           </video>
                         ) : recording.thumbnail_url ? (
                           <div className="relative aspect-video bg-slate-950">
-                            <img
+                            <Image
                               src={recording.thumbnail_url}
                               alt="Security event recording thumbnail"
+                              width={800}
+                              height={450}
                               className="h-full w-full object-cover"
                             />
 
@@ -344,7 +463,6 @@ export default async function RecordingsPage() {
                         )}
                       </div>
 
-                      {/* Details */}
                       <div className="p-6">
                         <div className="flex items-start justify-between gap-4">
                           <div>
@@ -354,7 +472,9 @@ export default async function RecordingsPage() {
 
                             <h3 className="mt-2 text-xl font-semibold">
                               {alert?.title ||
-                                formatEventType(event?.event_type)}
+                                formatEventType(
+                                  event?.event_type
+                                )}
                             </h3>
                           </div>
 
@@ -363,7 +483,8 @@ export default async function RecordingsPage() {
                               recording.status
                             )}`}
                           >
-                            {recording.status || "pending"}
+                            {recording.status ||
+                              "pending"}
                           </span>
                         </div>
 
@@ -374,7 +495,8 @@ export default async function RecordingsPage() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-200">
-                              {camera?.name || "Security Camera"}
+                              {camera?.name ||
+                                "Security Camera"}
                             </p>
 
                             {camera?.location && (
@@ -391,7 +513,9 @@ export default async function RecordingsPage() {
 
                             <p className="mt-1 text-sm text-slate-300">
                               {event?.description ||
-                                formatEventType(event?.event_type)}
+                                formatEventType(
+                                  event?.event_type
+                                )}
                             </p>
                           </div>
 
@@ -417,7 +541,9 @@ export default async function RecordingsPage() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-300">
-                              {formatDate(recording.created_at)}
+                              {formatDate(
+                                recording.created_at
+                              )}
                             </p>
                           </div>
 
@@ -450,7 +576,6 @@ export default async function RecordingsPage() {
           )}
         </section>
 
-        {/* Security notice */}
         <section className="mt-8 rounded-2xl border border-blue-900/50 bg-blue-950/20 p-6">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
