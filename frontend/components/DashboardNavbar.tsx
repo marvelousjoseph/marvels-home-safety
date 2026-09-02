@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -23,21 +24,18 @@ export default function DashboardNavbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3"
+          className="flex items-center"
           onClick={() => setMenuOpen(false)}
+          aria-label="Marvels Home Safety Dashboard"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20">
-            M
-          </div>
-
-          <div>
-            <p className="text-sm font-bold text-white">
-              Marvel&apos;s
-            </p>
-
-            <p className="text-xs text-slate-400">
-              Home Safety
-            </p>
+          <div className="relative h-16 w-16">
+            <Image
+              src="/marvels-home-safety-logo.png"
+              alt="Marvels Home Safety"
+              fill
+              priority
+              className="object-contain"
+            />
           </div>
         </Link>
 
