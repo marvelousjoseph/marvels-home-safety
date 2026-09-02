@@ -16,7 +16,10 @@ function getSupportedMimeType() {
     "video/mp4",
   ];
 
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+  return (
+    types.find((type) => MediaRecorder.isTypeSupported(type)) ||
+    ""
+  );
 }
 
 export default function LiveCamera({
@@ -36,6 +39,11 @@ export default function LiveCamera({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  /*
+   * The video element is mounted immediately.
+   * This callback tells us when React has actually
+   * attached the DOM video element.
+   */
   function handleVideoRef(node: HTMLVideoElement | null) {
     videoRef.current = node;
 
@@ -52,6 +60,10 @@ export default function LiveCamera({
     setError("");
     setMessage("");
 
+    /*
+     * The video element must exist before we request
+     * and attach the camera stream.
+     */
     const video = videoRef.current;
 
     if (!video || !videoReadyRef.current) {
@@ -68,13 +80,6 @@ export default function LiveCamera({
         );
       }
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-
-      setMessage("Requesting webcam access...");
-
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -86,68 +91,42 @@ export default function LiveCamera({
 
       streamRef.current = stream;
 
+      /*
+       * Re-read the ref after the permission dialog.
+       * React may have re-rendered while the browser
+       * was waiting for permission.
+       */
       const currentVideo = videoRef.current;
 
       if (!currentVideo) {
         stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
         throw new Error(
           "The camera viewer disappeared. Please try again."
         );
       }
 
       currentVideo.srcObject = stream;
-      currentVideo.muted = true;
-      currentVideo.playsInline = true;
 
-      /*
-       * Some browsers expose the stream before metadata is ready.
-       * We don't fail the camera startup simply because metadata
-       * takes a little longer to arrive.
-       */
-      if (currentVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
-        await new Promise<void>((resolve) => {
-          const handleMetadata = () => {
-            cleanup();
-            resolve();
-          };
-
-          const timeout = window.setTimeout(() => {
-            cleanup();
-            resolve();
-          }, 3000);
-
-          const cleanup = () => {
-            window.clearTimeout(timeout);
-            currentVideo.removeEventListener(
-              "loadedmetadata",
-              handleMetadata
-            );
-          };
-
-          currentVideo.addEventListener(
-            "loadedmetadata",
-            handleMetadata,
-            { once: true }
+      await new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          reject(
+            new Error("Timeout starting video source.")
           );
-        });
-      }
+        }, 10000);
 
-      try {
-        await currentVideo.play();
-      } catch (playError) {
-        console.warn("Video play warning:", playError);
-      }
+        const ready = () => {
+          window.clearTimeout(timeout);
+          resolve();
+        };
 
-      const liveTrack = stream.getVideoTracks().find(
-        (track) => track.readyState === "live"
-      );
+        if (currentVideo.readyState >= 1) {
+          ready();
+        } else {
+          currentVideo.onloadedmetadata = ready;
+        }
+      });
 
-      if (!liveTrack) {
-        throw new Error(
-          "The webcam stream started but no live video track is available."
-        );
-      }
+      await currentVideo.play();
 
       setIsActive(true);
       setMessage("Webcam is live.");
@@ -159,10 +138,6 @@ export default function LiveCamera({
       });
 
       streamRef.current = null;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
 
       setIsActive(false);
 
@@ -275,16 +250,20 @@ export default function LiveCamera({
 
         formData.append("deviceId", cameraId);
 
-        const response = await fetch("/api/cctv/record", {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          "/api/cctv/record",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
         const result = await response.json();
 
         if (!response.ok) {
           throw new Error(
-            result.error || "Could not save security recording."
+            result.error ||
+              "Could not save security recording."
           );
         }
 
@@ -303,7 +282,9 @@ export default function LiveCamera({
     };
 
     setIsRecording(true);
-    setMessage("Recording security event for 10 seconds...");
+    setMessage(
+      "Recording security event for 10 seconds..."
+    );
 
     recorder.start();
 
