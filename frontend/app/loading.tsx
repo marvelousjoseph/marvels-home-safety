@@ -17,7 +17,7 @@ export default function Loading() {
 
           <div className="relative h-40 w-40 sm:h-48 sm:w-48">
             <Image
-              src="/marvels-home-safety-logo.png"
+              src="/marvels-home-safety-m-logo.png"
               alt="Marvels Home Safety"
               fill
               priority

@@ -1,6 +1,5 @@
 import DashboardNavbar from "@/components/DashboardNavbar";
 import DashboardRealtime from "@/components/DashboardRealtime";
-import AccountActions from "@/components/AccountActions";
 import LiveCamera from "@/components/cameras/LiveCamera";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -475,7 +474,7 @@ export default async function Dashboard() {
             <div className="flex items-center justify-center border-t border-slate-800/80 bg-[#030a14] px-4 py-4">
               <div className="relative h-10 w-44 opacity-90">
                 <img
-                  src="/marvels-home-safety-logo.png"
+                  src="/marvels-home-safety-logo-transparent.png"
                   alt="Marvels Home Safety"
                   className="h-full w-full object-contain"
                 />
@@ -737,8 +736,7 @@ export default async function Dashboard() {
 
         {/* Account / Existing actions */}
         <div className="mt-6">
-          <AccountActions />
-        </div>
+            </div>
       </div>
     </main>
   );
