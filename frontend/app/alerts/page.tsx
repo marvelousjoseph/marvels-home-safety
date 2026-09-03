@@ -44,10 +44,7 @@ async function getAlerts() {
     .limit(1)
     .maybeSingle();
 
-  if (
-    membershipError ||
-    !membership?.home_id
-  ) {
+  if (membershipError || !membership?.home_id) {
     console.error(
       "Could not determine user's home:",
       membershipError
@@ -56,10 +53,7 @@ async function getAlerts() {
     return [];
   }
 
-  const {
-    data,
-    error,
-  } = await supabase
+  const { data, error } = await supabase
     .from("alerts")
     .select(`
       *,
@@ -83,11 +77,7 @@ async function getAlerts() {
     });
 
   if (error) {
-    console.error(
-      "Error loading alerts:",
-      error
-    );
-
+    console.error("Error loading alerts:", error);
     return [];
   }
 
@@ -111,61 +101,55 @@ async function getAlerts() {
           ? [alert.security_event_recordings]
           : [];
 
-      const recordingsWithUrls =
-        await Promise.all(
-          recordings.map(
-            async (recording: any) => {
-              const status =
-                recording.status?.toLowerCase();
+      const recordingsWithUrls = await Promise.all(
+        recordings.map(async (recording: any) => {
+          const status = recording.status?.toLowerCase();
 
-              if (
-                status !== "ready" ||
-                !recording.storage_path
-              ) {
-                return {
-                  ...recording,
-                  video_url: null,
-                };
-              }
+          if (
+            status !== "ready" ||
+            !recording.storage_path
+          ) {
+            return {
+              ...recording,
+              video_url: null,
+            };
+          }
 
-              const {
-                data: signedUrlData,
+          const {
+            data: signedUrlData,
+            error: signedUrlError,
+          } = await service.storage
+            .from("security-recordings")
+            .createSignedUrl(
+              recording.storage_path,
+              60 * 60
+            );
+
+          if (
+            signedUrlError ||
+            !signedUrlData?.signedUrl
+          ) {
+            console.error(
+              "Could not create alert recording signed URL:",
+              {
+                recordingId: recording.id,
+                storagePath: recording.storage_path,
                 error: signedUrlError,
-              } = await service.storage
-                .from("security-recordings")
-                .createSignedUrl(
-                  recording.storage_path,
-                  60 * 60
-                );
-
-              if (
-                signedUrlError ||
-                !signedUrlData?.signedUrl
-              ) {
-                console.error(
-                  "Could not create alert recording signed URL:",
-                  {
-                    recordingId: recording.id,
-                    storagePath:
-                      recording.storage_path,
-                    error: signedUrlError,
-                  }
-                );
-
-                return {
-                  ...recording,
-                  video_url: null,
-                };
               }
+            );
 
-              return {
-                ...recording,
-                video_url:
-                  signedUrlData.signedUrl,
-              };
-            }
-          )
-        );
+            return {
+              ...recording,
+              video_url: null,
+            };
+          }
+
+          return {
+            ...recording,
+            video_url: signedUrlData.signedUrl,
+          };
+        })
+      );
 
       return {
         ...alert,
@@ -235,326 +219,595 @@ function formatAlertTime(
   );
 }
 
+function getSeverity(
+  severity: string | null | undefined
+) {
+  return severity?.toLowerCase() ?? "unknown";
+}
+
+function getSeverityLabel(
+  severity: string | null | undefined
+) {
+  const normalized = getSeverity(severity);
+
+  if (normalized === "critical") {
+    return "Critical";
+  }
+
+  if (normalized === "high") {
+    return "High";
+  }
+
+  if (normalized === "medium") {
+    return "Medium";
+  }
+
+  if (normalized === "low") {
+    return "Low";
+  }
+
+  return "Alert";
+}
+
+function getSeverityIndicator(
+  severity: string | null | undefined
+) {
+  const normalized = getSeverity(severity);
+
+  if (normalized === "critical") {
+    return "bg-red-500";
+  }
+
+  if (normalized === "high") {
+    return "bg-orange-400";
+  }
+
+  if (normalized === "medium") {
+    return "bg-yellow-400";
+  }
+
+  return "bg-blue-400";
+}
+
+function getSeverityBadge(
+  severity: string | null | undefined,
+  resolved: boolean
+) {
+  if (resolved) {
+    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
+  }
+
+  const normalized = getSeverity(severity);
+
+  if (normalized === "critical") {
+    return "border-red-500/20 bg-red-500/10 text-red-300";
+  }
+
+  if (normalized === "high") {
+    return "border-orange-500/20 bg-orange-500/10 text-orange-300";
+  }
+
+  if (normalized === "medium") {
+    return "border-yellow-500/20 bg-yellow-500/10 text-yellow-300";
+  }
+
+  return "border-blue-500/20 bg-blue-500/10 text-blue-300";
+}
+
+function getRecordingStatusStyle(
+  status: string | null | undefined
+) {
+  const normalized = status?.toLowerCase();
+
+  if (normalized === "ready") {
+    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (normalized === "failed") {
+    return "border-red-500/20 bg-red-500/10 text-red-300";
+  }
+
+  return "border-yellow-500/20 bg-yellow-500/10 text-yellow-300";
+}
+
 export default async function AlertsPage() {
   const alerts = await getAlerts();
 
-  const activeAlerts =
-    alerts.filter(
-      (alert) => !alert.resolved
-    );
+  const activeAlerts = alerts.filter(
+    (alert) => !alert.resolved
+  );
 
-  const critical =
-    activeAlerts.filter(
-      (alert) =>
-        alert.severity?.toLowerCase() ===
-        "critical"
-    );
+  const critical = activeAlerts.filter(
+    (alert) =>
+      alert.severity?.toLowerCase() ===
+      "critical"
+  );
 
-  const warnings =
-    activeAlerts.filter(
-      (alert) => {
-        const severity =
-          alert.severity?.toLowerCase();
+  const warnings = activeAlerts.filter(
+    (alert) => {
+      const severity =
+        alert.severity?.toLowerCase();
 
-        return (
-          severity === "high" ||
-          severity === "medium"
-        );
-      }
-    );
+      return (
+        severity === "high" ||
+        severity === "medium"
+      );
+    }
+  );
 
-  const resolved =
-    alerts.filter(
-      (alert) => alert.resolved
-    );
+  const resolved = alerts.filter(
+    (alert) => alert.resolved
+  );
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-[#020617] text-white">
       <RealtimeAlerts />
 
       <DashboardNavbar />
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <p className="text-sm font-medium text-blue-400">
-          MARVEL&apos;S HOME SAFETY
-        </p>
+      <div className="relative overflow-hidden">
+        {/* Subtle page lighting */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.10),transparent_65%)]" />
 
-        <h1 className="mt-2 text-4xl font-bold">
-          Alerts
-        </h1>
+        <div className="relative mx-auto max-w-7xl px-5 py-9 sm:px-8 lg:py-12">
+          {/* Page header */}
+          <header className="border-b border-slate-800/80 pb-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-400">
+                  Security Operations
+                </p>
 
-        <p className="mt-2 text-slate-400">
-          Review security events and CCTV footage linked to those events.
-        </p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                  Alerts
+                </h1>
 
-        <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          Live security updates enabled
-        </div>
-
-        <section className="mt-8 grid gap-5 md:grid-cols-3">
-          <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Critical
-            </p>
-
-            <p className="mt-3 text-3xl font-bold">
-              {critical.length}
-            </p>
-
-            <p className="mt-2 text-sm text-red-400">
-              {critical.length === 0
-                ? "No critical alerts"
-                : "Critical alerts"}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-yellow-900 bg-yellow-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Warnings
-            </p>
-
-            <p className="mt-3 text-3xl font-bold">
-              {warnings.length}
-            </p>
-
-            <p className="mt-2 text-sm text-yellow-400">
-              {warnings.length === 0
-                ? "No warnings"
-                : "Active warnings"}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-900 bg-emerald-950/30 p-6">
-            <p className="text-sm text-slate-400">
-              Resolved
-            </p>
-
-            <p className="mt-3 text-3xl font-bold">
-              {resolved.length}
-            </p>
-
-            <p className="mt-2 text-sm text-emerald-400">
-              Resolved alerts
-            </p>
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">
-                Recent Alerts
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                {activeAlerts.length} active alert
-                {activeAlerts.length === 1
-                  ? ""
-                  : "s"}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            {alerts.length === 0 ? (
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
-                <p className="font-medium">
-                  No alerts found
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                  Review security events, investigate connected
+                  camera footage, and resolve incidents from one
+                  place.
                 </p>
               </div>
-            ) : (
-              alerts.map((alert) => {
-                const recording =
-                  Array.isArray(
-                    alert.security_event_recordings
-                  )
-                    ? alert.security_event_recordings[0]
-                    : alert.security_event_recordings;
 
-                const severity =
-                  alert.severity?.toLowerCase();
+              <div className="flex items-center gap-3 self-start rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3 lg:self-auto">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                </span>
 
-                const severityStyle =
-                  alert.resolved
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : severity === "critical"
-                      ? "bg-red-500/20 text-red-400"
-                      : severity === "high"
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "bg-yellow-500/20 text-yellow-400";
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    Live monitoring
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Realtime updates enabled
+                  </p>
+                </div>
+              </div>
+            </div>
+          </header>
 
-                return (
-                  <div
-                    key={alert.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950 p-5"
-                  >
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${severityStyle}`}
-                            >
-                              {alert.resolved
-                                ? "RESOLVED"
-                                : severity?.toUpperCase()}
-                            </span>
+          {/* Alert overview */}
+          <section className="grid border-b border-slate-800/80 sm:grid-cols-3">
+            <div className="border-b border-slate-800/80 py-6 sm:border-b-0 sm:border-r sm:pr-6">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Critical
+                </p>
+              </div>
 
-                            <p className="font-medium">
-                              {alert.title}
-                            </p>
-                          </div>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {critical.length}
+              </p>
 
-                          <p className="mt-2 text-sm text-slate-400">
-                            {alert.description}
-                          </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {critical.length === 0
+                  ? "No critical alerts"
+                  : "Require immediate attention"}
+              </p>
+            </div>
 
-                          <p className="mt-2 text-xs text-slate-500">
-                            {formatAlertTime(
-                              alert.created_at
-                            )}
-                          </p>
-                        </div>
+            <div className="border-b border-slate-800/80 py-6 sm:border-b-0 sm:border-r sm:px-6">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Warnings
+                </p>
+              </div>
 
-                        {!alert.resolved && (
-                          <form
-                            action={resolveAlert.bind(
-                              null,
-                              alert.id
-                            )}
-                          >
-                            <button
-                              type="submit"
-                              className="rounded-lg border border-emerald-700 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 hover:bg-emerald-500/20"
-                            >
-                              Resolve Alert
-                            </button>
-                          </form>
-                        )}
-                      </div>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {warnings.length}
+              </p>
 
-                      {recording && (
-                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                          <div className="mb-3 flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">
-                                📹 CCTV Footage
-                              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {warnings.length === 0
+                  ? "No active warnings"
+                  : "Active security warnings"}
+              </p>
+            </div>
 
-                              <p className="text-sm text-slate-400">
-                                {recording.devices?.name ??
-                                  "Security Camera"}
+            <div className="py-6 sm:pl-6">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Resolved
+                </p>
+              </div>
 
-                                {recording.devices
-                                  ?.location
-                                  ? ` • ${recording.devices.location}`
-                                  : ""}
-                              </p>
-                            </div>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {resolved.length}
+              </p>
 
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                recording.status ===
-                                "ready"
-                                  ? "bg-emerald-500/20 text-emerald-400"
-                                  : recording.status ===
-                                      "failed"
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-yellow-500/20 text-yellow-400"
-                              }`}
-                            >
-                              {recording.status?.toUpperCase() ||
-                                "PENDING"}
-                            </span>
-                          </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Security events resolved
+              </p>
+            </div>
+          </section>
 
-                          {recording.status ===
-                            "pending" && (
-                            <div className="rounded-lg border border-yellow-900 bg-yellow-950/20 p-4">
-                              <p className="font-medium text-yellow-300">
-                                ⏳ Recording is being prepared
-                              </p>
+          {/* Alerts list */}
+          <section className="pt-9">
+            <div className="flex flex-col gap-2 border-b border-slate-800/80 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
+                  Event log
+                </p>
 
-                              <p className="mt-1 text-sm text-slate-400">
-                                The security event has been recorded. CCTV
-                                footage will appear here automatically when it
-                                becomes available.
-                              </p>
-                            </div>
-                          )}
+                <h2 className="mt-1 text-xl font-semibold text-white">
+                  Recent security alerts
+                </h2>
+              </div>
 
-                          {recording.status ===
-                            "failed" && (
-                            <div className="rounded-lg border border-red-900 bg-red-950/20 p-4">
-                              <p className="font-medium text-red-300">
-                                Recording unavailable
-                              </p>
-                            </div>
-                          )}
+              <p className="text-sm text-slate-500">
+                {activeAlerts.length} active{" "}
+                {activeAlerts.length === 1
+                  ? "alert"
+                  : "alerts"}
+              </p>
+            </div>
 
-                          {recording.status ===
-                            "ready" && (
-                            <div className="space-y-3">
-                              {recording.video_url ? (
-                                <video
-                                  className="aspect-video h-auto w-full rounded-lg border border-slate-700 bg-black object-contain"
-                                  controls
-                                  preload="metadata"
-                                  playsInline
+            <div className="mt-5">
+              {alerts.length === 0 ? (
+                <div className="border border-slate-800 bg-slate-900/40 px-6 py-12 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center border border-slate-700 bg-slate-950 text-slate-500">
+                    —
+                  </div>
+
+                  <p className="mt-4 font-medium text-slate-200">
+                    No alerts found
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your security system has not recorded any
+                    alerts for this home.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-800/80 border-y border-slate-800/80">
+                  {alerts.map((alert) => {
+                    const recording =
+                      Array.isArray(
+                        alert.security_event_recordings
+                      )
+                        ? alert
+                            .security_event_recordings[0]
+                        : alert.security_event_recordings;
+
+                    const severity =
+                      getSeverity(alert.severity);
+
+                    return (
+                      <article
+                        key={alert.id}
+                        className="py-7"
+                      >
+                        <div className="flex flex-col gap-6">
+                          {/* Alert information */}
+                          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span
+                                  className={`inline-flex items-center gap-2 border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${getSeverityBadge(
+                                    alert.severity,
+                                    alert.resolved
+                                  )}`}
                                 >
-                                  <source
-                                    src={
-                                      recording.video_url
-                                    }
-                                    type="video/webm"
+                                  <span
+                                    className={`h-1.5 w-1.5 rounded-full ${
+                                      alert.resolved
+                                        ? "bg-emerald-400"
+                                        : getSeverityIndicator(
+                                            alert.severity
+                                          )
+                                    }`}
                                   />
 
-                                  Your browser does not support video playback.
-                                </video>
-                              ) : recording.thumbnail_url ? (
-                                <Image
-                                  src={
-                                    recording.thumbnail_url
-                                  }
-                                  alt="Security recording preview"
-                                  width={800}
-                                  height={400}
-                                  className="h-48 w-full rounded-lg border border-slate-700 object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-48 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-500">
-                                  📹 Preview unavailable
-                                </div>
-                              )}
+                                  {alert.resolved
+                                    ? "Resolved"
+                                    : getSeverityLabel(
+                                        alert.severity
+                                      )}
+                                </span>
 
-                              {recording.video_url ? (
-                                <a
-                                  href={
-                                    recording.video_url
-                                  }
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                                <span className="text-xs text-slate-600">
+                                  {severity !== "unknown"
+                                    ? severity.toUpperCase()
+                                    : "SECURITY EVENT"}
+                                </span>
+                              </div>
+
+                              <h3 className="mt-3 text-lg font-semibold text-white">
+                                {alert.title}
+                              </h3>
+
+                              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                                {alert.description}
+                              </p>
+
+                              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
+                                <span>
+                                  {formatAlertTime(
+                                    alert.created_at
+                                  )}
+                                </span>
+
+                                {recording?.devices?.name && (
+                                  <span>
+                                    Camera:{" "}
+                                    <span className="text-slate-400">
+                                      {
+                                        recording.devices
+                                          .name
+                                      }
+                                    </span>
+                                  </span>
+                                )}
+
+                                {recording?.devices
+                                  ?.location && (
+                                  <span>
+                                    Location:{" "}
+                                    <span className="text-slate-400">
+                                      {
+                                        recording.devices
+                                          .location
+                                      }
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {!alert.resolved && (
+                              <form
+                                action={resolveAlert.bind(
+                                  null,
+                                  alert.id
+                                )}
+                                className="shrink-0"
+                              >
+                                <button
+                                  type="submit"
+                                  className="inline-flex w-full items-center justify-center border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:border-emerald-400/50 hover:bg-emerald-500/10 sm:w-auto"
                                 >
-                                  ▶ Open Footage
-                                </a>
-                              ) : (
-                                <div className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-400">
-                                  Video is ready, but a secure playback URL could not be generated.
+                                  Resolve alert
+                                </button>
+                              </form>
+                            )}
+                          </div>
+
+                          {/* CCTV evidence */}
+                          {recording && (
+                            <div className="border border-slate-800 bg-[#030712]">
+                              <div className="flex flex-col gap-4 border-b border-slate-800 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-7 w-7 items-center justify-center border border-slate-700 bg-slate-900 text-xs text-blue-300">
+                                      CAM
+                                    </span>
+
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-200">
+                                        CCTV evidence
+                                      </p>
+
+                                      <p className="mt-0.5 text-xs text-slate-500">
+                                        {recording.devices
+                                          ?.name ??
+                                          "Security Camera"}
+
+                                        {recording.devices
+                                          ?.location
+                                          ? ` • ${recording.devices.location}`
+                                          : ""}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
-                              )}
+
+                                <span
+                                  className={`inline-flex w-fit border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${getRecordingStatusStyle(
+                                    recording.status
+                                  )}`}
+                                >
+                                  {recording.status?.toUpperCase() ||
+                                    "PENDING"}
+                                </span>
+                              </div>
+
+                              <div className="p-5">
+                                {recording.status ===
+                                  "pending" && (
+                                  <div className="border border-yellow-500/20 bg-yellow-500/5 px-5 py-6">
+                                    <div className="flex gap-4">
+                                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-yellow-400" />
+
+                                      <div>
+                                        <p className="font-medium text-yellow-200">
+                                          Recording is being prepared
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                                          The security event has
+                                          been recorded. CCTV
+                                          footage will appear
+                                          here automatically when
+                                          it becomes available.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {recording.status ===
+                                  "failed" && (
+                                  <div className="border border-red-500/20 bg-red-500/5 px-5 py-6">
+                                    <div className="flex gap-4">
+                                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-red-400" />
+
+                                      <div>
+                                        <p className="font-medium text-red-200">
+                                          Recording unavailable
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                          CCTV footage could not
+                                          be prepared for this
+                                          security event.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {recording.status ===
+                                  "ready" && (
+                                  <div className="overflow-hidden border border-slate-800 bg-black">
+                                    {recording.video_url ? (
+                                      <>
+                                        <video
+                                          className="aspect-video h-auto w-full bg-black object-contain"
+                                          controls
+                                          preload="metadata"
+                                          playsInline
+                                        >
+                                          <source
+                                            src={
+                                              recording.video_url
+                                            }
+                                            type="video/webm"
+                                          />
+
+                                          Your browser does not support video playback.
+                                        </video>
+
+                                        {/* Branded CCTV footer */}
+                                        <div className="flex flex-col items-center justify-center border-t border-slate-800 bg-[#020617] px-4 py-5">
+                                          <div className="relative h-14 w-40">
+                                            <Image
+                                              src="/marvels-home-safety-logo.png"
+                                              alt="Marvels Home Safety"
+                                              fill
+                                              sizes="160px"
+                                              className="object-contain"
+                                            />
+                                          </div>
+
+                                          <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-600">
+                                            Security recording
+                                          </p>
+                                        </div>
+                                      </>
+                                    ) : recording.thumbnail_url ? (
+                                      <>
+                                        <Image
+                                          src={
+                                            recording.thumbnail_url
+                                          }
+                                          alt="Security recording preview"
+                                          width={800}
+                                          height={400}
+                                          className="h-auto max-h-[480px] w-full object-cover"
+                                        />
+
+                                        <div className="flex flex-col items-center justify-center border-t border-slate-800 bg-[#020617] px-4 py-5">
+                                          <div className="relative h-14 w-40">
+                                            <Image
+                                              src="/marvels-home-safety-logo.png"
+                                              alt="Marvels Home Safety"
+                                              fill
+                                              sizes="160px"
+                                              className="object-contain"
+                                            />
+                                          </div>
+
+                                          <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-600">
+                                            Security recording
+                                          </p>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="flex h-56 items-center justify-center">
+                                        <div className="text-center">
+                                          <p className="text-sm font-medium text-slate-400">
+                                            Preview unavailable
+                                          </p>
+
+                                          <p className="mt-1 text-xs text-slate-600">
+                                            The recording exists but
+                                            no preview is available.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="border-t border-slate-800 bg-[#030712] px-5 py-4">
+                                      {recording.video_url ? (
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                          <div>
+                                            <p className="text-xs font-medium text-slate-400">
+                                              Secure footage
+                                            </p>
+
+                                            <p className="mt-0.5 text-xs text-slate-600">
+                                              Temporary protected
+                                              playback link
+                                            </p>
+                                          </div>
+
+                                          <a
+                                            href={
+                                              recording.video_url
+                                            }
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center justify-center border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-500/15"
+                                          >
+                                            Open footage
+                                          </a>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-slate-500">
+                                          Video is ready, but a secure
+                                          playback URL could not be
+                                          generated.
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
