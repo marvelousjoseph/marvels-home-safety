@@ -160,3 +160,103 @@ body {
 .marvels-spin {
   animation: marvels-spin 1.2s linear infinite;
 }
+
+/* =========================================================
+   MARVELS HOME SAFETY — GLOBAL APPLICATION SHELL
+   ========================================================= */
+
+.marvels-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  width: 280px;
+  flex-direction: column;
+  border-right: 1px solid rgba(30, 41, 59, 0.9);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 12, 25, 0.98) 0%,
+      rgba(2, 8, 18, 0.99) 100%
+    );
+  box-shadow:
+    12px 0 40px rgba(0, 0, 0, 0.18);
+}
+
+.marvels-sidebar-link {
+  position: relative;
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid transparent;
+  padding: 0 13px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.marvels-sidebar-link:hover {
+  border-color: rgba(51, 65, 85, 0.65);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+}
+
+.marvels-sidebar-link-active {
+  border-color: rgba(37, 99, 235, 0.3);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(37, 99, 235, 0.18),
+      rgba(37, 99, 235, 0.06)
+    );
+  color: #60a5fa;
+}
+
+.marvels-sidebar-link-active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: #1683ff;
+}
+
+.marvels-mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+  background: rgba(2, 8, 18, 0.96);
+  padding: 0 20px;
+  backdrop-filter: blur(18px);
+}
+
+.marvels-mobile-menu {
+  position: fixed;
+  inset: 72px 0 auto 0;
+  z-index: 55;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+  background: rgba(2, 8, 18, 0.99);
+  padding: 12px 20px 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 768px) {
+  body:has([data-marvels-app-sidebar]) {
+    padding-left: 280px;
+  }
+}
+
+@media (max-width: 767px) {
+  body:has([data-marvels-app-sidebar]) {
+    padding-left: 0;
+  }
+}

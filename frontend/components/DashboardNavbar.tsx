@@ -6,85 +6,182 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Home", href: "/home" },
-  { name: "Security", href: "/security" },
-  { name: "Alerts", href: "/alerts" },
-  { name: "Devices", href: "/devices" },
-  { name: "Activity", href: "/activity" },
-  { name: "Recordings", href: "/recordings" },
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: "dashboard",
+  },
+  {
+    name: "Home",
+    href: "/home",
+    icon: "home",
+  },
+  {
+    name: "Security",
+    href: "/security",
+    icon: "security",
+  },
+  {
+    name: "Alerts",
+    href: "/alerts",
+    icon: "alerts",
+  },
+  {
+    name: "Devices",
+    href: "/devices",
+    icon: "devices",
+  },
+  {
+    name: "Activity",
+    href: "/activity",
+    icon: "activity",
+  },
 ];
+
+function NavIcon({
+  type,
+}: {
+  type: string;
+}) {
+  const common = "h-[21px] w-[21px]";
+
+  if (type === "dashboard") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={common}
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    );
+  }
+
+  if (type === "home") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={common}
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <path d="M3 10.8 12 3l9 7.8" />
+        <path d="M5.5 9.5V21h13V9.5" />
+        <path d="M9.5 21v-6h5v6" />
+      </svg>
+    );
+  }
+
+  if (type === "security") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={common}
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <path d="M12 3 20 6v5.5c0 5.2-3.4 8.2-8 9.5-4.6-1.3-8-4.3-8-9.5V6l8-3Z" />
+        <path d="m8.7 12 2.2 2.2 4.5-4.7" />
+      </svg>
+    );
+  }
+
+  if (type === "alerts") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={common}
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+        <path d="M10 21h4" />
+      </svg>
+    );
+  }
+
+  if (type === "devices") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className={common}
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <rect x="4" y="5" width="16" height="12" rx="2" />
+        <path d="M8 21h8M12 17v4" />
+        <path d="M8 9h8M8 12h5" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={common}
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
 
 export default function DashboardNavbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-800/70 bg-[#020617]/90 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">
+    <>
+      {/* Mobile header */}
+      <header className="marvels-mobile-header md:hidden">
         <Link
           href="/dashboard"
-          className="group flex items-center"
-          onClick={() => setMenuOpen(false)}
           aria-label="Marvels Home Safety Dashboard"
+          onClick={() => setMenuOpen(false)}
         >
-          <div className="relative h-20 w-20 shrink-0 transition-transform duration-200 group-hover:scale-105 sm:h-[88px] sm:w-[88px]">
+          <div className="relative h-14 w-36">
             <Image
               src="/marvels-home-safety-logo.png"
               alt="Marvels Home Safety"
               fill
               priority
-              sizes="88px"
-              className="object-contain"
+              sizes="144px"
+              className="object-contain object-left"
             />
           </div>
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" &&
-                pathname.startsWith(`${item.href}/`));
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-blue-500/10 text-blue-300 shadow-[inset_0_0_20px_rgba(22,131,255,0.05)]"
-                    : "text-slate-400 hover:bg-white/[0.035] hover:text-white"
-                }`}
-              >
-                {item.name}
-
-                {isActive && (
-                  <span className="absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
-                )}
-              </Link>
-            );
-          })}
-        </div>
-
         <button
           type="button"
-          aria-label="Toggle navigation menu"
+          aria-label="Toggle navigation"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700/80 bg-white/[0.025] text-slate-300 transition hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-white md:hidden"
+          className="flex h-10 w-10 items-center justify-center border border-slate-700 bg-slate-900 text-slate-300"
         >
           {menuOpen ? (
-            <span className="text-xl">✕</span>
+            <span className="text-xl">×</span>
           ) : (
             <span className="text-xl">☰</span>
           )}
         </button>
-      </div>
+      </header>
 
+      {/* Mobile navigation */}
       {menuOpen && (
-        <div className="border-t border-slate-800/70 bg-[#020617]/98 px-5 py-4 backdrop-blur-2xl md:hidden">
-          <div className="mx-auto max-w-7xl space-y-1">
+        <div className="marvels-mobile-menu md:hidden">
+          <div className="space-y-1">
             {navigation.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -96,19 +193,130 @@ export default function DashboardNavbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMenuOpen(false)}
-                  className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${
+                  className={`marvels-sidebar-link ${
                     isActive
-                      ? "bg-blue-500/10 text-blue-300"
-                      : "text-slate-400 hover:bg-white/[0.035] hover:text-white"
+                      ? "marvels-sidebar-link-active"
+                      : ""
                   }`}
                 >
-                  {item.name}
+                  <NavIcon type={item.icon} />
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
           </div>
         </div>
       )}
-    </nav>
+
+      {/* Desktop sidebar */}
+      <aside
+        data-marvels-app-sidebar
+        className="marvels-sidebar hidden md:flex"
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Brand */}
+          <div className="border-b border-slate-800/80 px-5 py-5">
+            <Link
+              href="/dashboard"
+              aria-label="Marvels Home Safety Dashboard"
+              className="block"
+            >
+              <div className="relative mx-auto h-[125px] w-[190px]">
+                <Image
+                  src="/marvels-home-safety-logo.png"
+                  alt="Marvels Home Safety"
+                  fill
+                  priority
+                  sizes="190px"
+                  className="object-contain"
+                />
+              </div>
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-4 py-5">
+            <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+              Main Menu
+            </p>
+
+            <div className="space-y-1">
+              {navigation.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    pathname.startsWith(`${item.href}/`));
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`marvels-sidebar-link ${
+                      isActive
+                        ? "marvels-sidebar-link-active"
+                        : ""
+                    }`}
+                  >
+                    <NavIcon type={item.icon} />
+                    <span className="flex-1">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="my-6 border-t border-slate-800/70" />
+
+            <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+              System
+            </p>
+
+            <Link
+              href="/recordings"
+              className="marvels-sidebar-link"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-[21px] w-[21px]"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <rect
+                  x="3"
+                  y="6"
+                  width="18"
+                  height="13"
+                  rx="2"
+                />
+                <path d="m10 10 5 2.5-5 2.5v-5Z" />
+              </svg>
+
+              <span>Recordings</span>
+            </Link>
+          </nav>
+
+          {/* Account */}
+          <div className="border-t border-slate-800/80 p-4">
+            <div className="flex items-center gap-3 border border-slate-800/80 bg-slate-950/60 px-3 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-blue-500/30 bg-blue-500/10 text-sm font-semibold text-blue-300">
+                M
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-200">
+                  Home Owner
+                </p>
+
+                <p className="mt-0.5 truncate text-xs text-slate-600">
+                  Marvels Home Safety
+                </p>
+              </div>
+
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
