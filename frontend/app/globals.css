@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #030712;
+  --foreground: #f8fafc;
+
+  --marvels-navy: #030712;
+  --marvels-panel: #07111f;
+  --marvels-panel-light: #0a1627;
+
+  --marvels-blue: #1683ff;
+  --marvels-blue-bright: #2ea8ff;
+  --marvels-orange: #f59e0b;
+  --marvels-gold: #fbbf24;
 }
 
 @theme inline {
@@ -12,15 +21,142 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--marvels-navy);
 }
 
 body {
-  background: var(--background);
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(22, 131, 255, 0.10),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(245, 158, 11, 0.07),
+      transparent 24%
+    ),
+    linear-gradient(
+      180deg,
+      #020617 0%,
+      #030712 45%,
+      #020617 100%
+    );
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(22, 131, 255, 0.35);
+  color: white;
+}
+
+.marvels-app-background {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.marvels-app-background::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 10% 20%,
+      rgba(46, 168, 255, 0.07),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 90% 70%,
+      rgba(245, 158, 11, 0.045),
+      transparent 25%
+    );
+}
+
+.marvels-panel {
+  border: 1px solid rgba(71, 85, 105, 0.55);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(10, 22, 39, 0.96),
+      rgba(3, 12, 25, 0.96)
+    );
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.marvels-panel-hover {
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.marvels-panel-hover:hover {
+  border-color: rgba(46, 168, 255, 0.35);
+  transform: translateY(-1px);
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.34),
+    0 0 35px rgba(22, 131, 255, 0.055);
+}
+
+.marvels-blue-glow {
+  box-shadow:
+    0 0 30px rgba(22, 131, 255, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.marvels-orange-glow {
+  box-shadow:
+    0 0 30px rgba(245, 158, 11, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.marvels-grid {
+  background-image:
+    linear-gradient(
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+}
+
+@keyframes marvels-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes marvels-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.marvels-pulse {
+  animation: marvels-pulse 2s ease-in-out infinite;
+}
+
+.marvels-spin {
+  animation: marvels-spin 1.2s linear infinite;
 }
