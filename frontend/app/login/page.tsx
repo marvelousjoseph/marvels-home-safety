@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -34,67 +36,149 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
-      <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
-          <p className="text-sm font-medium text-blue-400">
-            MARVEL&apos;S HOME SAFETY
-          </p>
+    <main className="relative min-h-screen overflow-hidden bg-[#010814] text-white">
+      {/* Cinematic security background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/marvels-loading-screen.png')" }}
+      />
 
-          <h1 className="mt-2 text-3xl font-bold">
-            Welcome back
-          </h1>
+      <div className="absolute inset-0 bg-[#010814]/45" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(20,110,255,0.22),transparent_35%),linear-gradient(180deg,rgba(0,5,15,0.25),rgba(0,5,15,0.78))]" />
 
-          <p className="mt-2 text-sm text-slate-400">
-            Sign in to manage your home security.
-          </p>
+      {/* Atmospheric lighting */}
+      <div className="absolute left-[-10%] top-[35%] h-[500px] w-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
+      <div className="absolute right-[-10%] top-[25%] h-[500px] w-[500px] rounded-full bg-orange-500/10 blur-[120px]" />
 
-          <form onSubmit={handleLogin} className="mt-8 space-y-5">
-            <div>
-              <label className="text-sm text-slate-300">
-                Email
-              </label>
+      {/* Top logo */}
+      <div className="relative z-10 flex justify-center px-6 pt-8 sm:pt-10">
+        <Link href="/" aria-label="Marvels Home Safety">
+          <div className="relative h-[120px] w-[300px] sm:h-[145px] sm:w-[360px]">
+            <Image
+              src="/marvels-home-safety-logo.png"
+              alt="Marvels Home Safety"
+              fill
+              priority
+              sizes="360px"
+              className="object-contain"
+            />
+          </div>
+        </Link>
+      </div>
 
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
-                placeholder="you@example.com"
-              />
+      {/* Login panel */}
+      <div className="relative z-10 flex justify-center px-5 pb-10 pt-2 sm:pt-4">
+        <section className="relative w-full max-w-[390px]">
+          {/* blue/orange edge */}
+          <div className="absolute -inset-px rounded-[22px] bg-gradient-to-br from-blue-500 via-blue-500/30 to-orange-500/80 opacity-90" />
+
+          <div className="relative rounded-[21px] border border-white/10 bg-[#020a15]/90 px-6 py-7 shadow-[0_25px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:px-7 sm:py-8">
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-400">
+                Welcome Back
+              </p>
+
+              <h1 className="mt-2 text-3xl font-semibold tracking-[0.08em] sm:text-[34px]">
+                SIGN IN
+              </h1>
+
+              <p className="mx-auto mt-3 max-w-[280px] text-sm leading-6 text-slate-400">
+                Sign in to your account and stay connected to your home.
+              </p>
             </div>
 
-            <div>
-              <label className="text-sm text-slate-300">
-                Password
-              </label>
+            <div className="my-6 h-px bg-gradient-to-r from-blue-500/70 via-white/10 to-orange-500/70" />
 
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
-                placeholder="Enter your password"
-              />
-            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="sr-only">Email Address</label>
 
-            {error && (
-              <div className="rounded-xl border border-red-800 bg-red-950/40 p-3 text-sm text-red-400">
-                {error}
+                <div className="flex items-center border border-white/15 bg-black/30 px-3.5 transition focus-within:border-blue-400/70">
+                  <span className="mr-3 text-lg text-blue-400">✉</span>
+
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                    placeholder="Email Address"
+                    className="w-full bg-transparent px-0 py-3.5 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
               </div>
-            )}
+
+              <div>
+                <label className="sr-only">Password</label>
+
+                <div className="flex items-center border border-white/15 bg-black/30 px-3.5 transition focus-within:border-blue-400/70">
+                  <span className="mr-3 text-lg text-blue-400">▣</span>
+
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    placeholder="Password"
+                    className="w-full bg-transparent px-0 py-3.5 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-orange-500 px-5 py-3.5 text-sm font-bold tracking-[0.16em] shadow-lg shadow-blue-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? "SIGNING IN..." : "SIGN IN    →"}
+              </button>
+            </form>
+
+            <div className="my-5 flex items-center gap-3">
+              <span className="h-px flex-1 bg-white/10" />
+              <span className="text-[10px] font-medium tracking-[0.2em] text-slate-500">
+                OR
+              </span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
 
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled
+              className="flex w-full items-center justify-center gap-3 border border-white/10 bg-black/20 px-5 py-3 text-sm text-slate-300 opacity-80"
+              title="Google sign-in will be connected later"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              <span className="font-bold text-base">G</span>
+              Sign in with Google
             </button>
-          </form>
-        </div>
+
+            <p className="mt-7 text-center text-sm text-slate-400">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-medium text-blue-400 hover:text-blue-300"
+              >
+                Sign Up
+              </Link>
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {/* Security process */}
+      <div className="relative z-10 mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-5 px-5 pb-7 pt-3 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-300 sm:gap-8">
+        <span className="text-blue-300">♢ PROTECT</span>
+        <span className="text-slate-600">•</span>
+        <span className="text-blue-300">◎ DETECT</span>
+        <span className="text-slate-600">•</span>
+        <span className="text-blue-300">♧ ALERT</span>
+        <span className="text-orange-400">•</span>
+        <span className="text-blue-300">♢ RESPOND</span>
       </div>
     </main>
   );
