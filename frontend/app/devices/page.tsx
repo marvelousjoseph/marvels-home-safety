@@ -27,19 +27,27 @@ async function getDevices() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return [];
+    return {
+      devices: [],
+      isAdmin: false,
+    };
   }
 
   const { data: membership, error: membershipError } = await supabase
     .from("home_members")
-    .select("home_id")
+    .select("home_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
   if (membershipError || !membership?.home_id) {
-    return [];
+    return {
+      devices: [],
+      isAdmin: false,
+    };
   }
+
+  const isAdmin = membership.role === "admin";
 
   const { data: devices, error } = await supabase
     .from("devices")
@@ -49,30 +57,43 @@ async function getDevices() {
 
   if (error) {
     console.error("Error loading devices:", error);
-    return [];
+
+    return {
+      devices: [],
+      isAdmin,
+    };
   }
 
-  const { data: cameraConnections, error: cameraError } = await supabase
-    .from("camera_connections")
-    .select(
-      "device_id, ip_address, port, username, protocol, stream_path"
-    )
-    .eq("home_id", membership.home_id);
+  let cameraConnections: CameraConnection[] = [];
 
-  if (cameraError) {
-    console.error("Error loading camera connections:", cameraError);
+  if (isAdmin) {
+    const { data, error: cameraError } = await supabase
+      .from("camera_connections")
+      .select(
+        "device_id, ip_address, port, username, protocol, stream_path"
+      )
+      .eq("home_id", membership.home_id);
+
+    if (cameraError) {
+      console.error("Error loading camera connections:", cameraError);
+    }
+
+    cameraConnections = data ?? [];
   }
 
   const connectionsByDevice = new Map<string, CameraConnection>();
 
-  for (const connection of cameraConnections ?? []) {
+  for (const connection of cameraConnections) {
     connectionsByDevice.set(connection.device_id, connection);
   }
 
-  return (devices ?? []).map((device) => ({
-    ...device,
-    cameraConnection: connectionsByDevice.get(device.id) ?? null,
-  }));
+  return {
+    devices: (devices ?? []).map((device) => ({
+      ...device,
+      cameraConnection: connectionsByDevice.get(device.id) ?? null,
+    })),
+    isAdmin,
+  };
 }
 
 function getDeviceIcon(type: string | null, name: string | null) {
@@ -127,7 +148,7 @@ function getDeviceCategory(type: string | null, name: string | null) {
 }
 
 export default async function DevicesPage() {
-  const devices = await getDevices();
+  const { devices, isAdmin } = await getDevices();
 
   const onlineDevices = devices.filter(
     (device) => device.status?.toLowerCase() === "online"
@@ -468,7 +489,7 @@ export default async function DevicesPage() {
                       </div>
 
                       {/* Camera connection */}
-                      {isCamera && device.cameraConnection && (
+                      {isAdmin && isCamera && device.cameraConnection && (
                         <div className="mt-5 border-t border-slate-800/80 pt-5">
                           <div className="flex items-center justify-between">
                             <p className="text-[9px] font-bold tracking-[0.18em] text-slate-600">
@@ -552,64 +573,65 @@ export default async function DevicesPage() {
                       )}
 
                       {/* Development controls */}
-                      {(device.name === "Front Door Sensor" || isCamera) && (
-                        <div className="mt-5 border-t border-slate-800/80 pt-5">
-                          <div className="mb-3 flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                      {isAdmin &&
+                        (device.name === "Front Door Sensor" || isCamera) && (
+                          <div className="mt-5 border-t border-slate-800/80 pt-5">
+                            <div className="mb-3 flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
 
-                            <p className="text-[9px] font-bold tracking-[0.18em] text-orange-300/80">
-                              DEVELOPMENT TESTING
-                            </p>
-                          </div>
+                              <p className="text-[9px] font-bold tracking-[0.18em] text-orange-300/80">
+                                DEVELOPMENT TESTING
+                              </p>
+                            </div>
 
-                          {device.name === "Front Door Sensor" && (
-                            <>
-                              <form action={simulateFrontDoorOpen}>
+                            {device.name === "Front Door Sensor" && (
+                              <>
+                                <form action={simulateFrontDoorOpen}>
+                                  <button
+                                    type="submit"
+                                    className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-xs font-semibold text-white transition hover:bg-blue-500 active:scale-[0.99]"
+                                  >
+                                    Simulate Door Open
+                                  </button>
+                                </form>
+
+                                <p className="mt-2 text-center text-[10px] text-slate-600">
+                                  Creates a real device event in Supabase.
+                                </p>
+                              </>
+                            )}
+
+                            {isCamera && (
+                              <form
+                                action={async () => {
+                                  "use server";
+
+                                  await simulateCameraPersonDetection(
+                                    device.id
+                                  );
+                                }}
+                                className={
+                                  device.name === "Front Door Sensor"
+                                    ? "mt-3"
+                                    : ""
+                                }
+                              >
                                 <button
                                   type="submit"
-                                  className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-xs font-semibold text-white transition hover:bg-blue-500 active:scale-[0.99]"
+                                  className="w-full rounded-2xl border border-purple-500/20 bg-purple-500/10 px-4 py-3 text-xs font-semibold text-purple-300 transition hover:border-purple-400/30 hover:bg-purple-500/15 active:scale-[0.99]"
                                 >
-                                  Simulate Door Open
+                                  Simulate Person Detection
                                 </button>
                               </form>
+                            )}
 
+                            {isCamera && (
                               <p className="mt-2 text-center text-[10px] text-slate-600">
-                                Creates a real device event in Supabase.
+                                Development testing only.
                               </p>
-                            </>
-                          )}
-
-                          {isCamera && (
-                            <form
-                              action={async () => {
-                                "use server";
-
-                                await simulateCameraPersonDetection(
-                                  device.id
-                                );
-                              }}
-                              className={
-                                device.name === "Front Door Sensor"
-                                  ? "mt-3"
-                                  : ""
-                              }
-                            >
-                              <button
-                                type="submit"
-                                className="w-full rounded-2xl border border-purple-500/20 bg-purple-500/10 px-4 py-3 text-xs font-semibold text-purple-300 transition hover:border-purple-400/30 hover:bg-purple-500/15 active:scale-[0.99]"
-                              >
-                                Simulate Person Detection
-                              </button>
-                            </form>
-                          )}
-
-                          {isCamera && (
-                            <p className="mt-2 text-center text-[10px] text-slate-600">
-                              Development testing only.
-                            </p>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        )}
                     </div>
                   </article>
                 );
@@ -619,9 +641,11 @@ export default async function DevicesPage() {
         )}
 
         {/* Add Camera */}
-        <section className="mt-10">
-          <CameraForm />
-        </section>
+        {isAdmin && (
+          <section className="mt-10">
+            <CameraForm />
+          </section>
+        )}
 
         {/* Development information */}
         <section className="mt-8 overflow-hidden rounded-3xl border border-blue-500/15 bg-blue-500/[0.035] shadow-2xl shadow-black/10">

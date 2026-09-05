@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { processDeviceEvent } from "@/lib/process-device-event";
 
-async function getUserHome() {
+async function getAdminHome() {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -17,13 +17,24 @@ async function getUserHome() {
 
   const { data: membership, error: membershipError } = await supabase
     .from("home_members")
-    .select("home_id")
+    .select("home_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
-  if (membershipError || !membership?.home_id) {
+  if (membershipError) {
+    console.error("Home membership lookup error:", membershipError);
     throw new Error("Could not find your home.");
+  }
+
+  if (!membership?.home_id) {
+    throw new Error("Could not find your home.");
+  }
+
+  if (membership.role !== "admin") {
+    throw new Error(
+      "Only a home admin can run development device simulations."
+    );
   }
 
   return {
@@ -32,8 +43,8 @@ async function getUserHome() {
   };
 }
 
-async function getUserHomeAndDevice(deviceId: string) {
-  const { supabase, homeId } = await getUserHome();
+async function getAdminHomeAndDevice(deviceId: string) {
+  const { supabase, homeId } = await getAdminHome();
 
   const { data: device, error } = await supabase
     .from("devices")
@@ -57,8 +68,8 @@ async function getUserHomeAndDevice(deviceId: string) {
   };
 }
 
-async function getDeviceIdByName(deviceName: string) {
-  const { supabase, homeId } = await getUserHome();
+async function getAdminDeviceIdByName(deviceName: string) {
+  const { supabase, homeId } = await getAdminHome();
 
   const { data: device, error } = await supabase
     .from("devices")
@@ -81,9 +92,10 @@ async function getDeviceIdByName(deviceName: string) {
 
 /**
  * Development-only test for the front-door sensor.
+ * Only home admins may run device simulations.
  */
 export async function simulateFrontDoorOpen() {
-  const deviceId = await getDeviceIdByName("Front Door Sensor");
+  const deviceId = await getAdminDeviceIdByName("Front Door Sensor");
 
   await processDeviceEvent({
     deviceId,
@@ -99,13 +111,15 @@ export async function simulateFrontDoorOpen() {
  *
  * The camera is identified by its actual database device ID.
  * There is no hard-coded camera name here.
+ *
+ * Only home admins may run device simulations.
  */
 export async function simulateCameraPersonDetection(cameraId: string) {
   if (!cameraId) {
     throw new Error("Camera ID is required.");
   }
 
-  const { device } = await getUserHomeAndDevice(cameraId);
+  const { device } = await getAdminHomeAndDevice(cameraId);
 
   const deviceType = device.type?.toLowerCase() ?? "";
   const deviceName = device.name?.toLowerCase() ?? "";
