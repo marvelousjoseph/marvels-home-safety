@@ -112,8 +112,8 @@ export default function SignupPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#010814] text-white">
       {/* Cinematic security background */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/marvels-loading-screen.jpg')" }}
+        className="absolute inset-0 bg-cover bg-center sm:bg-[length:100%_100%]"
+        style={{ backgroundImage: "url('/marvels-auth-signup-scene.jpg')" }}
       />
 
       <div className="absolute inset-0 bg-[#010814]/45" />
@@ -125,9 +125,9 @@ export default function SignupPage() {
       {/* Logo */}
       <div className="relative z-10 flex justify-center px-6 pt-5 sm:pt-7">
         <Link href="/" aria-label="Marvels Home Safety">
-          <div className="relative h-[105px] w-[285px] sm:h-[120px] sm:w-[320px]">
+          <div className="relative h-[175px] w-[430px] sm:h-[205px] sm:w-[500px]">
             <Image
-              src="/marvels-home-safety-logo-transparent.png"
+              src="/marvels-auth-logo.png"
               alt="Marvels Home Safety"
               fill
               priority

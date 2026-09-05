@@ -39,8 +39,8 @@ export default function LoginPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#010814] text-white">
       {/* Cinematic security background */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/marvels-loading-screen.jpg')" }}
+        className="absolute inset-0 bg-cover bg-center sm:bg-[length:100%_100%]"
+        style={{ backgroundImage: "url('/marvels-auth-login-scene.jpg')" }}
       />
 
       <div className="absolute inset-0 bg-[#010814]/45" />
@@ -53,9 +53,9 @@ export default function LoginPage() {
       {/* Top logo */}
       <div className="relative z-10 flex justify-center px-6 pt-8 sm:pt-10">
         <Link href="/" aria-label="Marvels Home Safety">
-          <div className="relative h-[120px] w-[300px] sm:h-[145px] sm:w-[360px]">
+          <div className="relative h-[175px] w-[430px] sm:h-[205px] sm:w-[500px]">
             <Image
-              src="/marvels-home-safety-logo-transparent.png"
+              src="/marvels-auth-logo.png"
               alt="Marvels Home Safety"
               fill
               priority
@@ -68,7 +68,7 @@ export default function LoginPage() {
 
       {/* Login panel */}
       <div className="relative z-10 flex justify-center px-5 pb-10 pt-2 sm:pt-4">
-        <section className="relative w-full max-w-[390px]">
+        <section className="relative w-full max-w-[430px]">
           {/* blue/orange edge */}
           <div className="absolute -inset-px rounded-[22px] bg-gradient-to-br from-blue-500 via-blue-500/30 to-orange-500/80 opacity-90" />
 
