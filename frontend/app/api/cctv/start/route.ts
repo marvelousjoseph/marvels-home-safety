@@ -66,16 +66,11 @@ export async function POST(request: Request) {
      * This event represents the laptop webcam temporarily acting
      * as the selected security camera for MVP testing.
      */
-    const result = await processDeviceEvent(
-      {
-        deviceId: camera.id,
-        eventType: "person_detected",
-        description: `${camera.name} detected activity during the MVP webcam recording test.`,
-      },
-      {
-        authenticatedUser: true,
-      }
-    );
+    const result = await processDeviceEvent({
+      deviceId: camera.id,
+      eventType: "person_detected",
+      description: `${camera.name} detected activity during the MVP webcam recording test.`,
+    });
 
     if (!result.recording) {
       return NextResponse.json(

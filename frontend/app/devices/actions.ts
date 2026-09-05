@@ -85,14 +85,11 @@ async function getDeviceIdByName(deviceName: string) {
 export async function simulateFrontDoorOpen() {
   const deviceId = await getDeviceIdByName("Front Door Sensor");
 
-  await processDeviceEvent(
-    {
-      deviceId,
-      eventType: "door_opened",
-      description: "The front door was opened.",
-    },
-    { authenticatedUser: true }
-  );
+  await processDeviceEvent({
+    deviceId,
+    eventType: "door_opened",
+    description: "The front door was opened.",
+  });
 
   revalidateSecurityPaths();
 }
@@ -120,14 +117,11 @@ export async function simulateCameraPersonDetection(cameraId: string) {
     throw new Error("The selected device is not a camera.");
   }
 
-  await processDeviceEvent(
-    {
-      deviceId: device.id,
-      eventType: "person_detected",
-      description: `${device.name} detected a person.`,
-    },
-    { authenticatedUser: true }
-  );
+  await processDeviceEvent({
+    deviceId: device.id,
+    eventType: "person_detected",
+    description: `${device.name} detected a person.`,
+  });
 
   revalidateSecurityPaths();
 }

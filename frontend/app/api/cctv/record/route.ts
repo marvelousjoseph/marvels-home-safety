@@ -120,14 +120,11 @@ export async function POST(request: Request) {
      * - resolve this exact camera
      * - create security_event_recordings with status=pending
      */
-    const result = await processDeviceEvent(
-      {
-        deviceId: camera.id,
-        eventType: "person_detected",
-        description: `Test webcam security event recorded from ${camera.name}.`,
-      },
-      { authenticatedUser: true }
-    );
+    const result = await processDeviceEvent({
+      deviceId: camera.id,
+      eventType: "person_detected",
+      description: `Test webcam security event recorded from ${camera.name}.`,
+    });
 
     if (!result.recording) {
       return NextResponse.json(
