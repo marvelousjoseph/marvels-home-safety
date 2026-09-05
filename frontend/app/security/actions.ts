@@ -14,9 +14,12 @@ async function changeSecurityStatus(armed: boolean) {
     throw new Error("You must be logged in.");
   }
 
-  const { data: membership, error: membershipError } = await supabase
+  const {
+    data: membership,
+    error: membershipError,
+  } = await supabase
     .from("home_members")
-    .select("home_id")
+    .select("home_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -28,6 +31,12 @@ async function changeSecurityStatus(armed: boolean) {
 
   if (!membership?.home_id) {
     throw new Error("You are not a member of a home.");
+  }
+
+  if (membership.role !== "admin") {
+    throw new Error(
+      "Only a home admin can change the security status."
+    );
   }
 
   const { error } = await supabase

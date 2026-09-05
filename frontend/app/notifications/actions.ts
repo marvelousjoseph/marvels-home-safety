@@ -1,7 +1,24 @@
 "use server";
 
+import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+function createServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    throw new Error("Supabase server configuration is missing.");
+  }
+
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
 
 export async function markNotificationRead(notificationId: string) {
   const supabase = await createSupabaseServerClient();
@@ -14,7 +31,9 @@ export async function markNotificationRead(notificationId: string) {
     throw new Error("You must be logged in.");
   }
 
-  const { error } = await supabase
+  const service = createServiceClient();
+
+  const { error } = await service
     .from("notifications")
     .update({ read: true })
     .eq("id", notificationId)
@@ -38,7 +57,9 @@ export async function markAllNotificationsRead() {
     throw new Error("You must be logged in.");
   }
 
-  const { error } = await supabase
+  const service = createServiceClient();
+
+  const { error } = await service
     .from("notifications")
     .update({ read: true })
     .eq("user_id", user.id)
