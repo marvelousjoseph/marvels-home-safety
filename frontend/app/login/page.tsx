@@ -40,7 +40,7 @@ export default function LoginPage() {
       {/* Cinematic security background */}
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/marvels-loading-screen.png')" }}
+        style={{ backgroundImage: "url('/marvels-loading-screen.jpg')" }}
       />
 
       <div className="absolute inset-0 bg-[#010814]/45" />
@@ -55,7 +55,7 @@ export default function LoginPage() {
         <Link href="/" aria-label="Marvels Home Safety">
           <div className="relative h-[120px] w-[300px] sm:h-[145px] sm:w-[360px]">
             <Image
-              src="/marvels-home-safety-logo.png"
+              src="/marvels-home-safety-logo-transparent.png"
               alt="Marvels Home Safety"
               fill
               priority
