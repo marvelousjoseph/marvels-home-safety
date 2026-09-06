@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCCTV } from "@/components/cameras/CCTVContext";
 
 type LiveCameraProps = {
   cameraId: string;
@@ -8,185 +9,70 @@ type LiveCameraProps = {
   cameraLocation?: string | null;
 };
 
-function getSupportedMimeType() {
-  const types = [
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
-    "video/mp4",
-  ];
-
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
-}
-
 export default function LiveCamera({
   cameraId,
   cameraName = "Development Laptop Webcam",
   cameraLocation,
 }: LiveCameraProps) {
+  const {
+    stream,
+    sourceCameraId,
+    isAvailable,
+  } = useCCTV();
+
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const videoReadyRef = useRef(false);
 
   const [videoReady, setVideoReady] = useState(false);
   const [isActive, setIsActive] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  function handleVideoRef(node: HTMLVideoElement | null) {
-    videoRef.current = node;
+  const isThisCameraSource =
+    cameraId === sourceCameraId;
 
-    if (node) {
-      videoReadyRef.current = true;
-      setVideoReady(true);
-    } else {
-      videoReadyRef.current = false;
-      setVideoReady(false);
-    }
-  }
-
-  async function startCamera() {
+  function attachSharedCamera() {
     setError("");
     setMessage("");
 
     const video = videoRef.current;
 
-    if (!video || !videoReadyRef.current) {
-      setError(
-        "The camera viewer is still loading. Please wait a moment and try again."
-      );
+    if (!video) {
+      setError("The camera viewer is still loading.");
       return;
     }
 
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error(
-          "Camera access is not supported by this browser."
-        );
-      }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-
-      setMessage("Requesting webcam access...");
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 30 },
-        },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-
-      const currentVideo = videoRef.current;
-
-      if (!currentVideo) {
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        throw new Error(
-          "The camera viewer disappeared. Please try again."
-        );
-      }
-
-      currentVideo.srcObject = stream;
-      currentVideo.muted = true;
-      currentVideo.playsInline = true;
-
-      /*
-       * Some browsers expose the stream before metadata is ready.
-       * We don't fail the camera startup simply because metadata
-       * takes a little longer to arrive.
-       */
-      if (currentVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
-        await new Promise<void>((resolve) => {
-          const handleMetadata = () => {
-            cleanup();
-            resolve();
-          };
-
-          const timeout = window.setTimeout(() => {
-            cleanup();
-            resolve();
-          }, 3000);
-
-          const cleanup = () => {
-            window.clearTimeout(timeout);
-            currentVideo.removeEventListener(
-              "loadedmetadata",
-              handleMetadata
-            );
-          };
-
-          currentVideo.addEventListener(
-            "loadedmetadata",
-            handleMetadata,
-            { once: true }
-          );
-        });
-      }
-
-      try {
-        await currentVideo.play();
-      } catch (playError) {
-        console.warn("Video play warning:", playError);
-      }
-
-      const liveTrack = stream.getVideoTracks().find(
-        (track) => track.readyState === "live"
-      );
-
-      if (!liveTrack) {
-        throw new Error(
-          "The webcam stream started but no live video track is available."
-        );
-      }
-
-      setIsActive(true);
-      setMessage("Webcam is live.");
-    } catch (err) {
-      console.error("Camera access error:", err);
-
-      streamRef.current?.getTracks().forEach((track) => {
-        track.stop();
-      });
-
-      streamRef.current = null;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-
-      setIsActive(false);
-
+    if (!isThisCameraSource) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not access the camera."
+        "This camera does not have a connected live video source."
       );
+      setIsActive(false);
+      return;
     }
+
+    if (!stream || !stream.active || !isAvailable) {
+      setError(
+        "The CCTV camera is not currently available."
+      );
+      setIsActive(false);
+      return;
+    }
+
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
+    void video.play().catch((playError) => {
+      console.warn(
+        "Shared CCTV playback warning:",
+        playError
+      );
+    });
+
+    setIsActive(true);
+    setMessage("CCTV camera is live.");
   }
 
   function stopCamera() {
-    if (recorderRef.current?.state === "recording") {
-      recorderRef.current.stop();
-    }
-
-    recorderRef.current = null;
-
-    streamRef.current?.getTracks().forEach((track) => {
-      track.stop();
-    });
-
-    streamRef.current = null;
-
     const video = videoRef.current;
 
     if (video) {
@@ -195,22 +81,55 @@ export default function LiveCamera({
     }
 
     setIsActive(false);
-    setIsRecording(false);
     setMessage("");
+    setError("");
   }
 
-
   useEffect(() => {
-    return () => {
-      if (recorderRef.current?.state === "recording") {
-        recorderRef.current.stop();
-      }
+    setVideoReady(true);
 
-      streamRef.current?.getTracks().forEach((track) => {
-        track.stop();
-      });
+    return () => {
+      const video = videoRef.current;
+
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAvailable || !isThisCameraSource) {
+      setIsActive(false);
+
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+
+      return;
+    }
+
+    if (
+      isActive &&
+      videoRef.current &&
+      stream
+    ) {
+      videoRef.current.srcObject = stream;
+
+      void videoRef.current
+        .play()
+        .catch(() => {});
+    }
+  }, [
+    stream,
+    isAvailable,
+    isThisCameraSource,
+    isActive,
+  ]);
+
+  const canViewCamera =
+    isAvailable && isThisCameraSource;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
@@ -227,20 +146,14 @@ export default function LiveCamera({
           <div className="mt-2 flex items-center gap-2 text-xs">
             <span
               className={`h-2 w-2 rounded-full ${
-                isRecording
-                  ? "bg-red-500"
-                  : isActive
-                    ? "bg-emerald-400"
-                    : "bg-slate-600"
+                isActive
+                  ? "bg-emerald-400"
+                  : "bg-slate-600"
               }`}
             />
 
             <span className="text-slate-400">
-              {isRecording
-                ? "RECORDING"
-                : isActive
-                  ? "LIVE"
-                  : "OFFLINE"}
+              {isActive ? "LIVE" : "OFFLINE"}
             </span>
           </div>
         </div>
@@ -250,7 +163,7 @@ export default function LiveCamera({
 
       <div className="relative aspect-video bg-black">
         <video
-          ref={handleVideoRef}
+          ref={videoRef}
           autoPlay
           playsInline
           muted
@@ -264,7 +177,9 @@ export default function LiveCamera({
 
               <p className="mt-3 text-sm text-slate-400">
                 {videoReady
-                  ? "Camera is not active"
+                  ? canViewCamera
+                    ? "Camera is ready"
+                    : "Live stream unavailable for this camera"
                   : "Preparing camera viewer..."}
               </p>
             </div>
@@ -273,15 +188,8 @@ export default function LiveCamera({
 
         {isActive && (
           <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isRecording
-                  ? "bg-red-500"
-                  : "bg-emerald-400"
-              }`}
-            />
-
-            {isRecording ? "RECORDING" : "LIVE"}
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            LIVE
           </div>
         )}
       </div>
@@ -302,25 +210,24 @@ export default function LiveCamera({
         {!isActive ? (
           <button
             type="button"
-            onClick={startCamera}
-            disabled={!videoReady}
+            onClick={attachSharedCamera}
+            disabled={!videoReady || !canViewCamera}
             className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {videoReady
-              ? "Start Live View"
-              : "Preparing Camera..."}
+            {!videoReady
+              ? "Preparing Camera..."
+              : canViewCamera
+                ? "Start Live View"
+                : "Camera Unavailable"}
           </button>
         ) : (
-          <>
-            <button
-              type="button"
-              onClick={stopCamera}
-              disabled={isRecording}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Stop Live View
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={stopCamera}
+            className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            Stop Live View
+          </button>
         )}
       </div>
     </div>
