@@ -199,120 +199,6 @@ export default function LiveCamera({
     setMessage("");
   }
 
-  async function recordSecurityEvent() {
-    setError("");
-    setMessage("");
-
-    const stream = streamRef.current;
-
-    if (!stream || !isActive) {
-      setError(
-        "Start the webcam before recording a security event."
-      );
-      return;
-    }
-
-    if (recorderRef.current?.state === "recording") {
-      return;
-    }
-
-    const mimeType = getSupportedMimeType();
-
-    if (!mimeType) {
-      setError(
-        "This browser does not support a compatible recording format."
-      );
-      return;
-    }
-
-    const recorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: 1_500_000,
-    });
-
-    chunksRef.current = [];
-    recorderRef.current = recorder;
-
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
-
-    recorder.onerror = () => {
-      setIsRecording(false);
-      setError("The browser could not record the webcam.");
-    };
-
-    recorder.onstop = async () => {
-      setIsRecording(false);
-
-      const blob = new Blob(chunksRef.current, {
-        type: mimeType,
-      });
-
-      chunksRef.current = [];
-
-      if (blob.size === 0) {
-        setError("The browser produced an empty recording.");
-        return;
-      }
-
-      try {
-        setMessage("Uploading security recording...");
-
-        const extension = mimeType.includes("mp4")
-          ? "mp4"
-          : "webm";
-
-        const formData = new FormData();
-
-        formData.append(
-          "video",
-          blob,
-          `webcam-${Date.now()}.${extension}`
-        );
-
-        formData.append("deviceId", cameraId);
-
-        const response = await fetch("/api/cctv/record", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result.error || "Could not save security recording."
-          );
-        }
-
-        setMessage(
-          `Recording saved successfully for ${result.camera.name}.`
-        );
-      } catch (err) {
-        console.error("Recording upload error:", err);
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Could not upload the recording."
-        );
-      }
-    };
-
-    setIsRecording(true);
-    setMessage("Recording security event for 10 seconds...");
-
-    recorder.start();
-
-    window.setTimeout(() => {
-      if (recorder.state === "recording") {
-        recorder.stop();
-      }
-    }, 10000);
-  }
 
   useEffect(() => {
     return () => {
@@ -426,17 +312,6 @@ export default function LiveCamera({
           </button>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={recordSecurityEvent}
-              disabled={isRecording}
-              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isRecording
-                ? "Recording..."
-                : "Record Security Event"}
-            </button>
-
             <button
               type="button"
               onClick={stopCamera}
