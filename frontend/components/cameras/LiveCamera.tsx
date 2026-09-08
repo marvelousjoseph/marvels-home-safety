@@ -99,7 +99,7 @@ export default function LiveCamera({
   }, []);
 
   useEffect(() => {
-    if (!isAvailable || !isThisCameraSource) {
+    if (!isAvailable || !isThisCameraSource || !stream) {
       setIsActive(false);
 
       if (videoRef.current) {
@@ -110,22 +110,34 @@ export default function LiveCamera({
       return;
     }
 
-    if (
-      isActive &&
-      videoRef.current &&
-      stream
-    ) {
-      videoRef.current.srcObject = stream;
+    const video = videoRef.current;
 
-      void videoRef.current
-        .play()
-        .catch(() => {});
+    if (!video) {
+      return;
     }
+
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
+    void video.play()
+      .then(() => {
+        setError("");
+        setMessage("CCTV camera is live.");
+        setIsActive(true);
+      })
+      .catch((playError) => {
+        console.warn(
+          "Automatic CCTV playback warning:",
+          playError
+        );
+        setError("The CCTV camera is available, but live playback could not start.");
+        setIsActive(false);
+      });
   }, [
     stream,
     isAvailable,
     isThisCameraSource,
-    isActive,
   ]);
 
   const canViewCamera =
