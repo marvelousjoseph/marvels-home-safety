@@ -12,7 +12,37 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+
+  async function handleResetPassword() {
+    setError("");
+    setResetMessage("");
+
+    if (!email.trim()) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    setResetLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }
+    );
+
+    if (error) {
+      setError(error.message);
+      setResetLoading(false);
+      return;
+    }
+
+    setResetMessage("Password reset instructions have been sent to your email.");
+    setResetLoading(false);
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,6 +153,23 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetLoading}
+                  className="text-xs font-medium text-blue-400 transition hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resetLoading ? "SENDING..." : "Forgot password?"}
+                </button>
+              </div>
+
+              {resetMessage && (
+                <div className="border border-green-500/30 bg-green-500/10 px-3 py-3 text-sm text-green-300">
+                  {resetMessage}
+                </div>
+              )}
 
               {error && (
                 <div className="border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-300">
