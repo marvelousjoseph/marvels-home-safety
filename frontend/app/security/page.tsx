@@ -683,10 +683,22 @@ export default async function SecurityPage() {
                       </div>
 
                       <div className="p-3 sm:p-4">
-                        <LiveCamera
-                          cameraId={LIVE_CAMERA_ID}
-                          cameraName="Living Room Camera"
-                        />
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                          <p className="text-sm font-medium text-slate-300">
+                            Development webcam source
+                          </p>
+
+                          <p className="mt-2 text-sm text-slate-500">
+                            The development webcam is assigned to the Living Room
+                            Camera and is displayed in the CCTV Monitoring section
+                            above.
+                          </p>
+
+                          <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                            Living Room Camera is the active development source
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
