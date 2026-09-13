@@ -634,7 +634,8 @@ export default async function SecurityPage() {
           {/* DEVELOPMENT WEBCAM                                      */}
           {/* ========================================================= */}
 
-          <section className="mt-8 rounded-3xl border border-dashed border-slate-700/80 bg-slate-900/40 p-5 sm:p-6 lg:p-7">
+                    {process.env.NODE_ENV !== "production" && (
+<section className="mt-8 rounded-3xl border border-dashed border-slate-700/80 bg-slate-900/40 p-5 sm:p-6 lg:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -728,6 +729,7 @@ export default async function SecurityPage() {
               )}
             </div>
           </section>
+          )}
 
           {/* ========================================================= */}
           {/* MONITORING SERVICES                                      */}
