@@ -17,15 +17,33 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    async function prepareRecovery() {
+      const code = new URLSearchParams(window.location.search).get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          setError(
+            "This password recovery link is invalid or has expired."
+          );
+          return;
+        }
+
+        setReady(true);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
         setReady(true);
       }
-    });
+    }
 
-    return () => subscription.unsubscribe();
+    prepareRecovery();
   }, []);
 
   async function handleReset(event: FormEvent<HTMLFormElement>) {
@@ -68,7 +86,9 @@ export default function ResetPasswordPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#010814] text-white">
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/marvels-auth-login-scene.jpg')" }}
+        style={{
+          backgroundImage: "url('/marvels-auth-login-scene.jpg')",
+        }}
       />
 
       <div className="absolute inset-0 bg-[#010814]/55" />
@@ -109,7 +129,9 @@ export default function ResetPasswordPage() {
 
             {!ready ? (
               <div className="border border-white/10 bg-black/20 px-4 py-4 text-center text-sm text-slate-400">
-                Preparing secure password recovery...
+                {error
+                  ? error
+                  : "Preparing secure password recovery..."}
               </div>
             ) : (
               <form onSubmit={handleReset} className="space-y-4">
@@ -126,7 +148,9 @@ export default function ResetPasswordPage() {
                 <input
                   type="password"
                   value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  onChange={(event) =>
+                    setConfirmPassword(event.target.value)
+                  }
                   required
                   minLength={6}
                   placeholder="Confirm New Password"
@@ -150,7 +174,9 @@ export default function ResetPasswordPage() {
                   disabled={loading}
                   className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-orange-500 px-5 py-3.5 text-sm font-bold tracking-[0.16em] shadow-lg shadow-blue-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? "UPDATING..." : "UPDATE PASSWORD    →"}
+                  {loading
+                    ? "UPDATING..."
+                    : "UPDATE PASSWORD    →"}
                 </button>
               </form>
             )}
