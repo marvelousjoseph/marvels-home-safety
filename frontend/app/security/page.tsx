@@ -118,11 +118,7 @@ export default async function SecurityPage() {
     (alert) => alert.severity?.toLowerCase() === "critical"
   );
 
-  /*
-   * Keep the live CCTV stream source environment-based.
-   * Do not hard-code fake camera footage.
-   */
-  const liveStreamUrl = process.env.NEXT_PUBLIC_CCTV_STREAM_URL ?? "";
+  const LIVE_CAMERA_ID = "33f18217-83ed-43e0-ade2-c84f833403f0";
 
   const securityHealth =
     devices.length === 0
@@ -396,6 +392,17 @@ export default async function SecurityPage() {
                 <div className="grid gap-5 lg:grid-cols-2">
                   {cameras.map((camera) => {
                     const cameraOnline = isOnline(camera);
+                    const isLiveSource = camera.id === LIVE_CAMERA_ID;
+
+                    if (isLiveSource) {
+                      return (
+                        <LiveCamera
+                          key={camera.id}
+                          cameraId={camera.id}
+                          cameraName={camera.name}
+                        />
+                      );
+                    }
 
                     return (
                       <div
@@ -403,47 +410,27 @@ export default async function SecurityPage() {
                         className="group overflow-hidden rounded-2xl border border-slate-800 bg-[#050914] transition hover:border-blue-500/20"
                       >
                         <div className="relative aspect-video overflow-hidden bg-black">
-                          {liveStreamUrl && cameraOnline ? (
-                            <>
-                              <video
-                                className="h-full w-full object-contain"
-                                src={liveStreamUrl}
-                                controls
-                                autoPlay
-                                muted
-                                playsInline
-                              >
-                                Your browser does not support video playback.
-                              </video>
-
-                              <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full border border-red-500/20 bg-black/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-300 backdrop-blur">
-                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-                                Live
-                              </div>
-                            </>
-                          ) : (
-                            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-2xl">
-                                ◉
-                              </div>
-
-                              <p className="mt-4 font-semibold text-white">
-                                {camera.name}
-                              </p>
-
-                              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                                {cameraOnline
-                                  ? "Camera is online. Live video stream is not connected yet."
-                                  : "Camera is currently offline."}
-                              </p>
-
-                              {cameraOnline && (
-                                <div className="mt-4 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 text-[10px] font-bold tracking-wider text-yellow-400">
-                                  LIVE STREAM NOT CONNECTED
-                                </div>
-                              )}
+                          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-2xl">
+                              ◉
                             </div>
-                          )}
+
+                            <p className="mt-4 font-semibold text-white">
+                              {camera.name}
+                            </p>
+
+                            <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                              {cameraOnline
+                                ? "Camera is online. Live video stream is not connected yet."
+                                : "Camera is currently offline."}
+                            </p>
+
+                            {cameraOnline && (
+                              <div className="mt-4 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 text-[10px] font-bold tracking-wider text-yellow-400">
+                                LIVE STREAM NOT CONNECTED
+                              </div>
+                            )}
+                          </div>
 
                           {!cameraOnline && (
                             <div className="absolute left-4 top-4 rounded-full border border-red-500/20 bg-black/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-300 backdrop-blur">
@@ -676,17 +663,16 @@ export default async function SecurityPage() {
             <div className="mt-6">
               {onlineCameras.length > 0 ? (
                 <div className="space-y-5">
-                  {onlineCameras.map((camera) => (
-                    <div
-                      key={camera.id}
-                      className="overflow-hidden rounded-2xl border border-slate-800 bg-[#050914]"
-                    >
+                  {onlineCameras.filter(
+                    (camera) => camera.id === LIVE_CAMERA_ID
+                  ).length > 0 ? (
+                    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-[#050914]">
                       <div className="flex flex-col gap-3 border-b border-slate-800 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <p className="font-semibold">{camera.name}</p>
+                          <p className="font-semibold">Living Room Camera</p>
 
                           <p className="mt-1 text-xs text-slate-500">
-                            {camera.location || "Location not specified"}
+                            Development laptop webcam
                           </p>
                         </div>
 
@@ -698,12 +684,23 @@ export default async function SecurityPage() {
 
                       <div className="p-3 sm:p-4">
                         <LiveCamera
-                          cameraId={camera.id}
-                          cameraName={camera.name}
+                          cameraId={LIVE_CAMERA_ID}
+                          cameraName="Living Room Camera"
                         />
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="rounded-2xl border border-slate-800 bg-[#050914] p-6 text-center">
+                      <p className="text-sm font-semibold text-slate-300">
+                        No configured development camera is currently online.
+                      </p>
+
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        The laptop webcam is assigned only to the Living Room
+                        Camera.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-slate-800 bg-[#050914] p-6 text-center">
